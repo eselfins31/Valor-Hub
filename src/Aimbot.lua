@@ -34,14 +34,19 @@ return function(Services, State)
     local function updateCircle()
         local circle = ensureFovCircle()
         if not circle then return end
-        circle.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
-        circle.Radius = State.get("fovRadius")
-        circle.Color = State.get("fovColor")
-        circle.Visible = State.get("drawFov") and State.get("aimbotEnabled")
-        circle.NumSides = 64
-        circle.Filled = State.get("fovFilled")
-        circle.Transparency = State.get("fovTransparency")
-        circle.Thickness = State.get("fovThickness")
+        local ok = pcall(function()
+            circle.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+            circle.Radius = State.get("fovRadius")
+            circle.Color = State.get("fovColor")
+            circle.Visible = State.get("drawFov")
+            circle.NumSides = 64
+            circle.Filled = State.get("fovFilled")
+            circle.Transparency = State.get("fovTransparency")
+            circle.Thickness = State.get("fovThickness")
+        end)
+        if not ok then
+            -- if Drawing breaks, ignore silently
+        end
     end
 
     local function isVisible(hrp)
