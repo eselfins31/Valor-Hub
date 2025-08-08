@@ -18,6 +18,9 @@ State.settings = {
     infiniteJump = false,
     speedEnabled = false,
     walkSpeed = 100,
+    noclipEnabled = false,
+    flyEnabled = false,
+    flySpeed = 60,
 
     -- Weapons
     ammoMod = false,
