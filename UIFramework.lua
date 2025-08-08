@@ -92,14 +92,14 @@ HomeTab:CreateSection("Quick Actions")
 HomeTab:CreateButton({
     Name = "Start All",
     Callback = function()
-        ESP.start(); Aimbot.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
+        ESP.start(); Rage.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
         Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules started", Duration = 4 })
     end
 })
 HomeTab:CreateButton({
     Name = "Stop All",
     Callback = function()
-        ESP.stop(); Aimbot.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
+        ESP.stop(); Rage.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
         Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules stopped", Duration = 4 })
     end
 })

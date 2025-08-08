@@ -7,6 +7,7 @@ return function(Services, State)
     local camera = workspace.CurrentCamera
 
     local fovCircle
+    local started = false
 
     local function ensureFovCircle()
         local ok, DrawingLib = pcall(function() return Drawing end)
@@ -53,36 +54,34 @@ return function(Services, State)
     local function hitchanceOK(worldPos)
         local deg = State.get("rageHitchanceAngleDeg")
         local cursor = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
-        local screenPoint = Vector2.new(camera:WorldToScreenPoint(worldPos).X, camera:WorldToScreenPoint(worldPos).Y)
+        local sp = camera:WorldToScreenPoint(worldPos)
+        local screenPoint = Vector2.new(sp.X, sp.Y)
         local dx = (cursor - screenPoint).Magnitude
-        return dx <= State.get("rageFovRadius") and dx <= deg * 8 -- empirical mapping
+        return dx <= State.get("rageFovRadius") and dx <= deg * 8
     end
 
     local function autoShoot()
         if not State.get("rageAutoShoot") then return end
         quickStop()
         pcall(function()
-            mouse1press()
-            task.wait()
-            mouse1release()
+            mouse1press(); task.wait(); mouse1release()
         end)
     end
 
     local function triggerbot()
         if not State.get("rageTriggerbot") then return end
         pcall(function()
-            mouse1press()
-            task.wait()
-            mouse1release()
+            mouse1press(); task.wait(); mouse1release()
         end)
     end
 
     function Rage.start()
+        if started then return end
+        started = true
         RunService:BindToRenderStep("ValorHub_Rage", Enum.RenderPriority.Camera.Value + 11, function()
             updateFov()
-            -- targeting logic is left to SilentAim expansion and/or configured hitboxes
-            -- here we only handle auto behaviors based on cursor within FOV (trigger) and hitchance
-            if hitchanceOK(camera.CFrame.Position + camera.CFrame.LookVector * 1000) then
+            local lookPoint = camera.CFrame.Position + camera.CFrame.LookVector * 1000
+            if hitchanceOK(lookPoint) then
                 if State.get("rageTriggerbot") then triggerbot() end
                 if State.get("rageAutoShoot") then autoShoot() end
             end
@@ -90,6 +89,8 @@ return function(Services, State)
     end
 
     function Rage.stop()
+        if not started then return end
+        started = false
         RunService:UnbindFromRenderStep("ValorHub_Rage")
         if fovCircle then pcall(function() fovCircle:Remove() end) fovCircle = nil end
     end
