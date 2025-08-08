@@ -1,19 +1,21 @@
 -- Load Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
 
--- Require modules from a Folder named `src` next to this script
-local srcFolder = script:FindFirstChild("src") or (script.Parent and script.Parent:FindFirstChild("src"))
-if not srcFolder then
-    error("Missing `src` Folder with ModuleScripts (State, Services, ESP, Aimbot, Movement, WeaponMods, SilentAim)")
+-- Raw GitHub loader: fetch modules via http and inject Services/State
+local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main"
+local function fetch(path)
+    return game:HttpGet(BASE .. "/" .. path, true)
 end
 
-local State = require(srcFolder:WaitForChild("State"))
-local Services = require(srcFolder:WaitForChild("Services"))
-local ESP = require(srcFolder:WaitForChild("ESP"))
-local Aimbot = require(srcFolder:WaitForChild("Aimbot"))
-local Movement = require(srcFolder:WaitForChild("Movement"))
-local WeaponMods = require(srcFolder:WaitForChild("WeaponMods"))
-local SilentAim = require(srcFolder:WaitForChild("SilentAim"))
+local State = loadstring(fetch("src/State.lua"))()
+local Services = loadstring(fetch("src/Services.lua"))()
+
+-- Modules are initializer functions that accept (Services, State)
+local ESP = loadstring(fetch("src/ESP.lua"))()(Services, State)
+local Aimbot = loadstring(fetch("src/Aimbot.lua"))()(Services, State)
+local Movement = loadstring(fetch("src/Movement.lua"))()(Services, State)
+local WeaponMods = loadstring(fetch("src/WeaponMods.lua"))()(Services, State)
+local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
 
 -- Window
 local Window = Rayfield:CreateWindow({
