@@ -102,7 +102,7 @@ HomeTab:CreateButton({
 })
 
 -- Visuals / ESP
-VisualsTab:CreateSection("ESP")
+VisualsTab:CreateSection("ESP (On test)")
 VisualsTab:CreateToggle({
     Name = "Enable ESP",
     CurrentValue = State.get("espEnabled"),
