@@ -7,98 +7,66 @@ return function(Services, State)
 
     local drawings = {} -- [player] = { line = DrawingLine }
 
-    local prototypes = {
-        nameBillboard = nil,
-        boxBillboard = nil,
-    }
-
-    local function createPrototypes()
-        if prototypes.nameBillboard and prototypes.boxBillboard then return end
-
-        local esp = Instance.new("BillboardGui")
-        esp.Name = "esp"
-        esp.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        esp.Active = true
-        esp.AlwaysOnTop = true
-        esp.LightInfluence = 1
-        esp.Size = UDim2.new(0, 300, 0, 30)
-        esp.StudsOffset = Vector3.new(0, 3, 0)
-
-        local name = Instance.new("TextLabel")
-        name.Name = "name"
-        name.Parent = esp
-        name.BackgroundTransparency = 1
-        name.Size = UDim2.new(1, 0, 1, 0)
-        name.Font = Enum.Font.Ubuntu
-        name.TextColor3 = Color3.fromRGB(255, 255, 255)
-        name.TextSize = State.get("espTextSize")
-        name.TextStrokeTransparency = 0
-        name.TextWrapped = true
-        name.TextTransparency = 0
-
-        local mainesp = Instance.new("BillboardGui")
-        mainesp.Name = "mainesp"
-        mainesp.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        mainesp.Active = true
-        mainesp.AlwaysOnTop = true
-        mainesp.LightInfluence = 1
-        mainesp.MaxDistance = 999999
-        mainesp.Size = UDim2.new(4, 0, 6, 0)
-
-        local box = Instance.new("ImageLabel")
-        box.Name = "box"
-        box.Parent = mainesp
-        box.BackgroundTransparency = 1
-        box.Size = UDim2.new(1, 0, 1, 0)
-        box.Image = "rbxassetid://16946608585" -- default box
-        box.ImageTransparency = 0.6
-
-        prototypes.nameBillboard = esp
-        prototypes.boxBillboard = mainesp
+    local function getCharacterParts(character)
+        if not character then return nil, nil end
+        local head = character:FindFirstChild("Head") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+        local hrp = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart or head
+        return head, hrp
     end
 
-    local function ensureESPFor(player)
+    local function ensureHighlight(player)
         local character = player.Character
         if not character then return end
-        local head = character:FindFirstChild("Head")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-        if not head or not hrp then return end
-
-        if not head:FindFirstChild("esp") then
-            local nameClone = prototypes.nameBillboard:Clone()
-            nameClone.Parent = head
-        end
-        if not hrp:FindFirstChild("mainesp") then
-            local boxClone = prototypes.boxBillboard:Clone()
-            boxClone.Parent = hrp
-        end
-
-        if not drawings[player] then
-            local ok, _ = pcall(function() return Drawing end)
-            if ok then
-                local line = Drawing.new("Line")
-                line.Thickness = State.get("espThickness")
-                line.Transparency = 1
-                line.Visible = false
-                drawings[player] = { line = line }
-            end
+        local hl = character:FindFirstChild("ValorHubHighlight")
+        if not hl then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ValorHubHighlight"
+            highlight.Adornee = character
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.FillTransparency = 1 -- outline only for less obtrusive look
+            highlight.OutlineTransparency = 0
+            highlight.Parent = character
         end
     end
 
-    local function removeESP(player)
-        local character = player and player.Character
-        if character then
-            local head = character:FindFirstChild("Head")
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if head and head:FindFirstChild("esp") then head.esp:Destroy() end
-            if hrp and hrp:FindFirstChild("mainesp") then hrp.mainesp:Destroy() end
+    local function ensureBillboard(player)
+        local character = player.Character
+        if not character then return end
+        local head, _ = getCharacterParts(character)
+        if not head then return end
+        local gui = head:FindFirstChild("esp")
+        if not gui then
+            local esp = Instance.new("BillboardGui")
+            esp.Name = "esp"
+            esp.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            esp.Active = true
+            esp.AlwaysOnTop = true
+            esp.LightInfluence = 1
+            esp.Size = UDim2.new(0, 200, 0, 24)
+            esp.StudsOffset = Vector3.new(0, 3, 0)
+            esp.Parent = head
+
+            local name = Instance.new("TextLabel")
+            name.Name = "name"
+            name.Parent = esp
+            name.BackgroundTransparency = 1
+            name.Size = UDim2.new(1, 0, 1, 0)
+            name.Font = Enum.Font.Ubuntu
+            name.TextStrokeTransparency = 0.5
+            name.TextScaled = false
+            name.TextWrapped = false
         end
-        if drawings[player] then
-            pcall(function()
-                if drawings[player].line then drawings[player].line:Remove() end
-            end)
-            drawings[player] = nil
-        end
+    end
+
+    local function ensureTracer(player)
+        if drawings[player] then return end
+        local ok = pcall(function() return Drawing end)
+        if not ok then return end
+        local line = Drawing.new("Line")
+        line.Thickness = State.get("espThickness")
+        line.Transparency = 1
+        line.Visible = false
+        drawings[player] = { line = line }
     end
 
     local function colorFor(player)
@@ -112,82 +80,92 @@ return function(Services, State)
         end
     end
 
-    local function updateVisuals()
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                local character = player.Character
-                local head = character and character:FindFirstChild("Head")
-                local hrp = character and character:FindFirstChild("HumanoidRootPart")
-                local color = colorFor(player)
-                if character and head and hrp then
-                    ensureESPFor(player)
-                    -- name label
-                    if head:FindFirstChild("esp") and head.esp:FindFirstChild("name") then
-                        head.esp.name.Visible = State.get("espShow") and State.get("espShowNames")
-                        head.esp.name.Text = player.Name
-                        head.esp.name.TextSize = State.get("espTextSize")
-                        head.esp.name.TextColor3 = color
-                    end
-                    -- box
-                    if hrp:FindFirstChild("mainesp") and hrp.mainesp:FindFirstChild("box") then
-                        local boxImg = hrp.mainesp.box
-                        boxImg.ImageTransparency = State.get("espShow") and 0.3 or 1
-                        boxImg.Image = State.get("espMode") == "Corner" and "rbxassetid://14519771515" or "rbxassetid://16946608585"
-                    end
-                    -- tracer line (screen space)
-                    if drawings[player] and drawings[player].line then
-                        local line = drawings[player].line
-                        local cam = workspace.CurrentCamera
-                        local headScreen = cam:WorldToViewportPoint(hrp.Position)
-                        local originY = cam.ViewportSize.Y
-                        local origin
-                        -- Bottom origin as default
-                        origin = Vector2.new(cam.ViewportSize.X / 2, originY)
-                        line.From = origin
-                        line.To = Vector2.new(headScreen.X, headScreen.Y)
-                        line.Color = color
-                        line.Thickness = State.get("espThickness")
-                        line.Visible = State.get("espShow") and State.get("espShowTracers")
-                    end
-                else
-                    removeESP(player)
-                end
+    local function removeFor(player)
+        local character = player and player.Character
+        if character then
+            local head, _ = getCharacterParts(character)
+            local hl = character:FindFirstChild("ValorHubHighlight")
+            if hl then hl:Destroy() end
+            if head and head:FindFirstChild("esp") then head.esp:Destroy() end
+        end
+        if drawings[player] then
+            pcall(function()
+                if drawings[player].line then drawings[player].line:Remove() end
+            end)
+            drawings[player] = nil
+        end
+    end
+
+    local function updateOne(player)
+        local character = player.Character
+        if not character then removeFor(player) return end
+        local head, hrp = getCharacterParts(character)
+        if not head or not hrp then removeFor(player) return end
+
+        ensureHighlight(player)
+        ensureBillboard(player)
+        if State.get("espShowTracers") then ensureTracer(player) end
+
+        local enemy = (not State.get("teamCheck")) or (player.Team ~= LocalPlayer.Team)
+        local visible = State.get("espEnabled") and State.get("espShow") and enemy
+        local color = colorFor(player)
+
+        -- Highlight
+        local hl = character:FindFirstChild("ValorHubHighlight")
+        if hl then
+            hl.Enabled = visible
+            hl.OutlineColor = color
+        end
+
+        -- Name / Health label
+        if head:FindFirstChild("esp") and head.esp:FindFirstChild("name") then
+            local nameLbl = head.esp.name
+            nameLbl.Visible = State.get("espShowNames") and visible
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if State.get("espShowHealth") and humanoid then
+                nameLbl.Text = string.format("%s | %d", player.Name, math.floor(humanoid.Health))
+            else
+                nameLbl.Text = player.Name
+            end
+            nameLbl.TextSize = State.get("espTextSize")
+            nameLbl.TextColor3 = color
+        end
+
+        -- Tracer (Drawing)
+        local record = drawings[player]
+        if record and record.line then
+            local line = record.line
+            local cam = workspace.CurrentCamera
+            local projected, onScreen = cam:WorldToViewportPoint(hrp.Position)
+            if onScreen and State.get("espShowTracers") and visible then
+                local origin = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
+                line.From = origin
+                line.To = Vector2.new(projected.X, projected.Y)
+                line.Color = color
+                line.Thickness = State.get("espThickness")
+                line.Visible = true
+            else
+                line.Visible = false
             end
         end
     end
 
     function ESP.start()
-        createPrototypes()
-        RunService:BindToRenderStep("ValorHub_ESP_Attach", Enum.RenderPriority.Camera.Value + 1, function()
-            if not State.get("espEnabled") then return end
+        RunService:BindToRenderStep("ValorHub_ESP_Update", Enum.RenderPriority.Camera.Value + 2, function()
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
-                    if State.get("teamCheck") and player.Team == LocalPlayer.Team then
-                        removeESP(player)
-                    else
-                        ensureESPFor(player)
-                    end
+                    updateOne(player)
                 end
             end
         end)
-        RunService:BindToRenderStep("ValorHub_ESP_Style", Enum.RenderPriority.Camera.Value + 2, function()
-            if not State.get("espEnabled") then
-                for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
-                return
-            end
-            updateVisuals()
-        end)
-        Players.PlayerRemoving:Connect(function(player)
-            removeESP(player)
+        Players.PlayerRemoving:Connect(function(p)
+            removeFor(p)
         end)
     end
 
     function ESP.stop()
-        RunService:UnbindFromRenderStep("ValorHub_ESP_Attach")
-        RunService:UnbindFromRenderStep("ValorHub_ESP_Style")
-        for _, player in ipairs(Players:GetPlayers()) do
-            removeESP(player)
-        end
+        RunService:UnbindFromRenderStep("ValorHub_ESP_Update")
+        for _, p in ipairs(Players:GetPlayers()) do removeFor(p) end
     end
 
     return ESP
