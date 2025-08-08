@@ -4,8 +4,8 @@ local State = {}
 State.settings = {
     -- Visuals / ESP
     espEnabled = false,
-    espShow = true, -- master show/hide
-    teamCheck = true,
+    espShow = false, -- master show/hide
+    teamCheck = false,
 
     -- ESP advanced
     espMode = "Box", -- Box | Corner
@@ -21,7 +21,7 @@ State.settings = {
 
     -- Rage (replaces Aimbot)
     rageFovRadius = 250,
-    drawRageFov = true,
+    drawRageFov = false,
     rageFovFilled = false,
     rageFovThickness = 2,
     rageFovColor = Color3.fromRGB(255, 255, 255),
