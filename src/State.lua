@@ -43,6 +43,7 @@ State.settings = {
     flyEnabled = false,
     flySpeed = 60,
     airStrafeSpeed = 80,
+    spiderEnabled = false,
 
     -- Weapons
     ammoMod = false,
@@ -51,6 +52,10 @@ State.settings = {
 
     -- Silent aim (optional)
     silentAim = false,
+    silentAimSize = 13,
+
+    -- HUD
+    hudEnabled = true,
 
     -- Keybinds (toggle features)
     bindEspToggle = "T",

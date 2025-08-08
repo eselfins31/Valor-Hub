@@ -33,6 +33,8 @@ return function(Services, State)
         drawings[player] = { line = line }
     end
 
+    private = {}
+
     local function removeTracer(player)
         if drawings[player] then
             pcall(function()
@@ -87,6 +89,17 @@ return function(Services, State)
         box.Size = UDim2.new(1, 0, 1, 0)
         box.Image = "rbxassetid://16946608585"
         box.ImageTransparency = 1 -- default hidden like working script
+
+        -- Health bar along left side
+        local hb = Instance.new("Frame")
+        hb.Name = "healthbar"
+        hb.Parent = mainesp
+        hb.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
+        hb.BorderSizePixel = 0
+        hb.BackgroundTransparency = 0.3
+        hb.AnchorPoint = Vector2.new(0, 1)
+        hb.Position = UDim2.new(0, 0, 1, 0)
+        hb.Size = UDim2.new(0, 3, 0, 0) -- height set per frame
 
         boxBillboardPrototype = mainesp
     end
@@ -171,11 +184,22 @@ return function(Services, State)
                             nameLbl.TextSize = State.get("espTextSize")
                             nameLbl.TextColor3 = colorFor(v)
                         end
-                        -- box image
+                        -- box image & health bar
                         local bodyGui = hrp:FindFirstChild("mainesp")
-                        if bodyGui and bodyGui:FindFirstChild("box") then
-                            bodyGui.box.Image = (State.get("espMode") == "Corner") and "rbxassetid://14519771515" or "rbxassetid://16946608585"
-                            bodyGui.box.ImageTransparency = (show and enemy) and 0.43 or 1
+                        if bodyGui then
+                            if bodyGui:FindFirstChild("box") then
+                                bodyGui.box.Image = (State.get("espMode") == "Corner") and "rbxassetid://14519771515" or "rbxassetid://16946608585"
+                                bodyGui.box.ImageTransparency = (show and enemy) and 0.43 or 1
+                            end
+                            local hb = bodyGui:FindFirstChild("healthbar")
+                            if hb then
+                                local hum = char:FindFirstChildOfClass("Humanoid")
+                                local frac = 1
+                                if hum and hum.MaxHealth > 0 then frac = math.clamp(hum.Health / hum.MaxHealth, 0, 1) end
+                                hb.Visible = State.get("espShowHealth") and show and enemy
+                                hb.Size = UDim2.new(0, 3, frac, 0)
+                                hb.BackgroundColor3 = Color3.fromRGB(255 * (1-frac), 255 * frac, 0)
+                            end
                         end
                         -- tracers
                         local rec = drawings[v]

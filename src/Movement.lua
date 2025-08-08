@@ -14,6 +14,9 @@ return function(Services, State)
     local flyBodyVel
     local flyBodyGyro
 
+    local spiderConn
+    local spiderBV
+
     local keysDown = {}
 
     local function getCharacter()
@@ -72,11 +75,8 @@ return function(Services, State)
                     local hSpeed = State.get("airStrafeSpeed")
                     local desired = getCameraStrafeVector(hSpeed)
                     if desired.Magnitude > 0 then
-                        -- preserve vertical velocity while correcting lateral movement
                         local newVel = Vector3.new(desired.X, hrp.Velocity.Y, desired.Z)
-                        -- brief velocity set to lock direction of the jump
                         hrp.Velocity = newVel
-                        -- safety: small impulse via BodyVelocity for a frame
                         local bv = Instance.new("BodyVelocity")
                         bv.MaxForce = Vector3.new(1e5, 0, 1e5)
                         bv.Velocity = Vector3.new(desired.X, 0, desired.Z)
@@ -144,7 +144,6 @@ return function(Services, State)
                     part.CanCollide = false
                 end
             end
-            -- Keep ground collision by enabling root collision if falling without ground beneath
             local hrp = getRoot()
             if hrp then
                 local onGround = isNearGround(hrp)
@@ -158,7 +157,6 @@ return function(Services, State)
             noclipConn:Disconnect()
             noclipConn = nil
         end
-        -- restore default collisions on character parts
         local char = Players.LocalPlayer.Character
         if char then
             for _, part in ipairs(char:GetDescendants()) do
@@ -169,7 +167,7 @@ return function(Services, State)
         end
     end
 
-    -- FLY
+    -- FLY (unchanged)
     local function updateKeys(input, down)
         if input.KeyCode == Enum.KeyCode.W then keysDown.W = down end
         if input.KeyCode == Enum.KeyCode.A then keysDown.A = down end
@@ -244,6 +242,40 @@ return function(Services, State)
         if flyBodyVel then flyBodyVel:Destroy() flyBodyVel = nil end
         if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
         keysDown = {}
+    end
+
+    -- Spider: climb by jumping against walls
+    function Movement.startSpider()
+        Movement.stopSpider()
+        spiderConn = RunService.Stepped:Connect(function()
+            if not State.get("spiderEnabled") then return end
+            local hrp = getRoot()
+            if not hrp then return end
+            -- raycast forward for wall
+            local cam = workspace.CurrentCamera
+            local forward = cam.CFrame.LookVector
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = { getCharacter() }
+            params.FilterType = Enum.RaycastFilterType.Blacklist
+            local res = workspace:Raycast(hrp.Position, forward * 3, params)
+            if res and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                if not spiderBV then
+                    spiderBV = Instance.new("BodyVelocity")
+                    spiderBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                    spiderBV.Parent = hrp
+                end
+                -- push upward and slightly into wall
+                spiderBV.Velocity = Vector3.new(forward.X * 5, 35, forward.Z * 5)
+            elseif spiderBV then
+                spiderBV:Destroy()
+                spiderBV = nil
+            end
+        end)
+    end
+
+    function Movement.stopSpider()
+        if spiderConn then spiderConn:Disconnect() spiderConn = nil end
+        if spiderBV then spiderBV:Destroy() spiderBV = nil end
     end
 
     return Movement

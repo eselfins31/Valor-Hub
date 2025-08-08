@@ -16,11 +16,12 @@ local Aimbot = loadstring(fetch("src/Aimbot.lua"))()(Services, State)
 local Movement = loadstring(fetch("src/Movement.lua"))()(Services, State)
 local WeaponMods = loadstring(fetch("src/WeaponMods.lua"))()(Services, State)
 local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
+local HUD = loadstring(fetch("src/HUD.lua"))()(Services, State)
 
 -- Window
 local Window = Rayfield:CreateWindow({
-    Name = "Valor Hub",
-    LoadingTitle = "Valor Hub",
+    Name = "Valor Hub - Arsenal",
+    LoadingTitle = "Valor Hub - Arsenal",
     LoadingSubtitle = "Roblox-friendly UI",
     ConfigurationSaving = {
         Enabled = false,
@@ -34,7 +35,7 @@ local Window = Rayfield:CreateWindow({
     },
     KeySystem = false,
     KeySettings = {
-        Title = "Valor Hub",
+        Title = "Valor Hub - Arsenal",
         Subtitle = "Authentication",
         Note = "",
         FileName = "ValorHubKey",
@@ -51,6 +52,7 @@ local CombatTab = Window:CreateTab("Combat", 13014552420)
 local WeaponsTab = Window:CreateTab("Weapons", 4483362458)
 local MovementTab = Window:CreateTab("Movement", 4483362458)
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
+local InfoTab   = Window:CreateTab("Info", 4483362458)
 
 -- Keybinds Listener
 local UIS = game:GetService("UserInputService")
@@ -80,7 +82,7 @@ UIS.InputBegan:Connect(function(input, gpe)
         if State.get("silentAim") then SilentAim.start() else SilentAim.stop() end
     elseif kc == Enum.KeyCode[State.get("bindWeaponModsApply")] then
         WeaponMods.update()
-        Rayfield:Notify({ Title = "Valor Hub", Content = "Applied weapon mods", Duration = 3 })
+        Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Applied weapon mods", Duration = 3 })
     end
 end)
 
@@ -90,14 +92,14 @@ HomeTab:CreateButton({
     Name = "Start All",
     Callback = function()
         ESP.start(); Aimbot.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
-        Rayfield:Notify({ Title = "Valor Hub", Content = "Modules started", Duration = 4 })
+        Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules started", Duration = 4 })
     end
 })
 HomeTab:CreateButton({
     Name = "Stop All",
     Callback = function()
         ESP.stop(); Aimbot.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
-        Rayfield:Notify({ Title = "Valor Hub", Content = "Modules stopped", Duration = 4 })
+        Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules stopped", Duration = 4 })
     end
 })
 
@@ -330,7 +332,7 @@ WeaponsTab:CreateButton({
     Name = "Force Apply All (debug)",
     Callback = function()
         WeaponMods.update()
-        Rayfield:Notify({ Title = "Valor Hub", Content = "Attempted to apply all weapon mods.", Duration = 4 })
+        Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Attempted to apply all weapon mods.", Duration = 4 })
     end
 })
 
@@ -408,6 +410,15 @@ MovementTab:CreateSlider({
         State.update({ flySpeed = v })
     end
 })
+MovementTab:CreateToggle({
+    Name = "Spider (jump to climb walls)",
+    CurrentValue = State.get("spiderEnabled"),
+    Flag = "spiderEnabled",
+    Callback = function(on)
+        State.update({ spiderEnabled = on })
+        if on then Movement.startSpider() else Movement.stopSpider() end
+    end
+})
 
 -- Extras
 CombatTab:CreateSection("Silent Aim")
@@ -418,6 +429,17 @@ CombatTab:CreateToggle({
     Callback = function(on)
         State.update({ silentAim = on })
         if on then SilentAim.start() else SilentAim.stop() end
+    end
+})
+CombatTab:CreateSlider({
+    Name = "Silent Aim Hitbox Size",
+    Range = {5, 30},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = State.get("silentAimSize"),
+    Flag = "silentAimSize",
+    Callback = function(v)
+        State.update({ silentAimSize = v })
     end
 })
 
@@ -435,11 +457,20 @@ UITab:CreateToggle({
         blur.Size = on and 12 or 0
     end
 })
+UITab:CreateToggle({
+    Name = "Session HUD",
+    CurrentValue = State.get("hudEnabled"),
+    Flag = "hudEnabled",
+    Callback = function(on)
+        State.update({ hudEnabled = on })
+        if on then HUD.start() else HUD.stop() end
+    end
+})
 UITab:CreateButton({
     Name = "Save Configuration",
     Callback = function()
         Rayfield:SaveConfiguration()
-        Rayfield:Notify({ Title = "Valor Hub", Content = "Config saved.", Duration = 3 })
+        Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Config saved.", Duration = 3 })
     end
 })
 UITab:CreateButton({
@@ -458,12 +489,30 @@ UITab:CreateKeybind({
     end
 })
 
+-- Info Tab
+InfoTab:CreateSection("About")
+InfoTab:CreateParagraph({
+    Title = "Valor Hub - Arsenal",
+    Content = "A modern Rayfield UI for Arsenal, featuring ESP, Aimbot, SilentAim, Movement, Weapon Mods, and more."
+})
+InfoTab:CreateParagraph({
+    Title = "Key Features",
+    Content = "ESP (names/boxes/health/tracers), Aimbot with FOV + smoothing, Silent Aim hitbox, Infinite Jump v2, FLY, NOCLIP v2, Spider climb, Session HUD."
+})
+InfoTab:CreateParagraph({
+    Title = "Credits",
+    Content = "Owner: Eselfin31. UI powered by Rayfield."
+})
+
 -- Load saved config
 Rayfield:LoadConfiguration()
 
+-- Start HUD if enabled
+if State.get("hudEnabled") then HUD.start() end
+
 -- Initial notification
 Rayfield:Notify({
-    Title = "Valor Hub",
+    Title = "Valor Hub - Arsenal",
     Content = "UI loaded successfully",
     Duration = 6
 })

@@ -16,12 +16,13 @@ return function(Services, State)
                     "HeadHB",
                     "HumanoidRootPart",
                 }
+                local size = State.get("silentAimSize")
                 for _, name in ipairs(parts) do
                     local p = ch:FindFirstChild(name)
                     if p and p:IsA("BasePart") then
                         p.CanCollide = false
                         p.Transparency = 1
-                        p.Size = Vector3.new(13, 13, 13)
+                        p.Size = Vector3.new(size, size, size)
                     end
                 end
             end
