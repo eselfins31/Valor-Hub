@@ -19,21 +19,18 @@ State.settings = {
     espTextSize = 13,
     espTracerOrigin = "Bottom", -- Bottom | Center | Top
 
-    -- Aimbot
-    aimbotEnabled = false,
-    aimPart = "Head",
-    fovRadius = 55,
-    drawFov = true,
-    fovFilled = false,
-    fovThickness = 2,
-    fovColor = Color3.fromRGB(255, 255, 255),
-    fovTransparency = 1,
-    aimActivation = "Hold", -- Hold | Toggle
-    aimKey = "MouseButton2", -- e.g. MouseButton2, Q, E
-    aimSmoothing = 0.08, -- seconds for tween
-    visibleCheck = true,
-    targetPriority = "CursorProximity", -- CursorProximity | Distance
-    maxDistance = 15000,
+    -- Rage (replaces Aimbot)
+    rageFovRadius = 250,
+    drawRageFov = true,
+    rageFovFilled = false,
+    rageFovThickness = 2,
+    rageFovColor = Color3.fromRGB(255, 255, 255),
+    rageFovTransparency = 1,
+    rageHitchanceAngleDeg = 6, -- lower = stricter
+    rageAutoShoot = false,
+    rageTriggerbot = false,
+    rageQuickStop = false,
+    rageHitbox = "Head", -- Head | HumanoidRootPart
 
     -- Movement
     infiniteJump = false,
@@ -50,7 +47,7 @@ State.settings = {
     fireRateMod = false,
     recoilMod = false,
 
-    -- Silent aim (optional)
+    -- Silent aim (hitbox expand)
     silentAim = false,
     silentAimSize = 13,
 
@@ -59,7 +56,6 @@ State.settings = {
 
     -- Keybinds (toggle features)
     bindEspToggle = "T",
-    bindAimbotToggle = "V",
     bindInfJumpToggle = "J",
     bindSpeedToggle = "Z",
     bindNoclipToggle = "X",

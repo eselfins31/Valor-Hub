@@ -12,7 +12,8 @@ local Services = loadstring(fetch("src/Services.lua"))()
 
 -- Modules are initializer functions that accept (Services, State)
 local ESP = loadstring(fetch("src/ESP.lua"))()(Services, State)
-local Aimbot = loadstring(fetch("src/Aimbot.lua"))()(Services, State)
+-- Aimbot removed in rage-only build
+local Rage = loadstring(fetch("src/Rage.lua"))()(Services, State)
 local Movement = loadstring(fetch("src/Movement.lua"))()(Services, State)
 local WeaponMods = loadstring(fetch("src/WeaponMods.lua"))()(Services, State)
 local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
@@ -48,7 +49,7 @@ local Window = Rayfield:CreateWindow({
 -- Tabs
 local HomeTab   = Window:CreateTab("Home", 4483362458)
 local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-local CombatTab = Window:CreateTab("Combat", 13014552420)
+local RageTab = Window:CreateTab("Rage", 13014552420)
 local WeaponsTab = Window:CreateTab("Weapons", 4483362458)
 local MovementTab = Window:CreateTab("Movement", 4483362458)
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
@@ -194,108 +195,110 @@ VisualsTab:CreateSlider({
     end
 })
 
--- Combat
-CombatTab:CreateSection("Aimbot")
-CombatTab:CreateToggle({
-    Name = "Enable Aimbot",
-    CurrentValue = State.get("aimbotEnabled"),
-    Flag = "aimbotEnabled",
-    Callback = function(on)
-        State.update({ aimbotEnabled = on })
-        if on then Aimbot.start() else Aimbot.stop() end
-    end
-})
-CombatTab:CreateDropdown({
-    Name = "Aim Part",
-    Options = {"Head", "HumanoidRootPart"},
-    CurrentOption = State.get("aimPart"),
-    Flag = "aimPart",
-    Callback = function(opt)
-        State.update({ aimPart = opt })
-    end
-})
-CombatTab:CreateSlider({
-    Name = "FOV Radius",
-    Range = {10, 500},
+-- Rage
+RageTab:CreateSection("Ragebot")
+RageTab:CreateSlider({
+    Name = "Rage FOV Radius",
+    Range = {10, 600},
     Increment = 1,
     Suffix = "px",
-    CurrentValue = State.get("fovRadius"),
-    Flag = "fovRadius",
+    CurrentValue = State.get("rageFovRadius"),
+    Flag = "rageFovRadius",
     Callback = function(v)
-        State.update({ fovRadius = v })
+        State.update({ rageFovRadius = v })
     end
 })
-CombatTab:CreateToggle({
+RageTab:CreateToggle({
     Name = "Draw FOV",
-    CurrentValue = State.get("drawFov"),
-    Flag = "drawFov",
+    CurrentValue = State.get("drawRageFov"),
+    Flag = "drawRageFov",
     Callback = function(on)
-        State.update({ drawFov = on })
+        State.update({ drawRageFov = on })
     end
 })
-CombatTab:CreateToggle({
+RageTab:CreateToggle({
     Name = "Filled FOV",
-    CurrentValue = State.get("fovFilled"),
-    Flag = "fovFilled",
+    CurrentValue = State.get("rageFovFilled"),
+    Flag = "rageFovFilled",
     Callback = function(on)
-        State.update({ fovFilled = on })
+        State.update({ rageFovFilled = on })
     end
 })
-CombatTab:CreateSlider({
+RageTab:CreateSlider({
     Name = "FOV Thickness",
     Range = {1, 5},
     Increment = 0.5,
     Suffix = "px",
-    CurrentValue = State.get("fovThickness"),
-    Flag = "fovThickness",
+    CurrentValue = State.get("rageFovThickness"),
+    Flag = "rageFovThickness",
     Callback = function(v)
-        State.update({ fovThickness = v })
+        State.update({ rageFovThickness = v })
     end
 })
-CombatTab:CreateDropdown({
-    Name = "Activation Mode",
-    Options = {"Hold","Toggle"},
-    CurrentOption = State.get("aimActivation"),
-    Flag = "aimActivation",
-    Callback = function(opt)
-        State.update({ aimActivation = opt })
-    end
-})
-CombatTab:CreateDropdown({
-    Name = "Activation Key",
-    Options = {"MouseButton2","Q","E","R","LeftAlt","RightShift"},
-    CurrentOption = State.get("aimKey"),
-    Flag = "aimKey",
-    Callback = function(opt)
-        State.update({ aimKey = opt })
-    end
-})
-CombatTab:CreateSlider({
-    Name = "Smoothing (seconds)",
-    Range = {0, 0.3},
-    Increment = 0.005,
-    Suffix = "s",
-    CurrentValue = State.get("aimSmoothing"),
-    Flag = "aimSmoothing",
+RageTab:CreateSlider({
+    Name = "Hitchance Angle (deg)",
+    Range = {1, 20},
+    Increment = 0.5,
+    Suffix = "deg",
+    CurrentValue = State.get("rageHitchanceAngleDeg"),
+    Flag = "rageHitchanceAngleDeg",
     Callback = function(v)
-        State.update({ aimSmoothing = v })
+        State.update({ rageHitchanceAngleDeg = v })
     end
 })
-CombatTab:CreateToggle({
-    Name = "Visible Check",
-    CurrentValue = State.get("visibleCheck"),
-    Flag = "visibleCheck",
+RageTab:CreateDropdown({
+    Name = "Hitbox",
+    Options = {"Head","HumanoidRootPart"},
+    CurrentOption = State.get("rageHitbox"),
+    Flag = "rageHitbox",
+    Callback = function(opt)
+        State.update({ rageHitbox = opt })
+    end
+})
+RageTab:CreateToggle({
+    Name = "Auto Shoot",
+    CurrentValue = State.get("rageAutoShoot"),
+    Flag = "rageAutoShoot",
     Callback = function(on)
-        State.update({ visibleCheck = on })
+        State.update({ rageAutoShoot = on })
     end
 })
-CombatTab:CreateDropdown({
-    Name = "Priority",
-    Options = {"CursorProximity","Distance"},
-    CurrentOption = State.get("targetPriority"),
-    Flag = "targetPriority",
-    Callback = function(opt)
-        State.update({ targetPriority = opt })
+RageTab:CreateToggle({
+    Name = "Triggerbot",
+    CurrentValue = State.get("rageTriggerbot"),
+    Flag = "rageTriggerbot",
+    Callback = function(on)
+        State.update({ rageTriggerbot = on })
+    end
+})
+RageTab:CreateToggle({
+    Name = "Quick Stop",
+    CurrentValue = State.get("rageQuickStop"),
+    Flag = "rageQuickStop",
+    Callback = function(on)
+        State.update({ rageQuickStop = on })
+    end
+})
+
+RageTab:CreateSection("Silent Aim")
+RageTab:CreateToggle({
+    Name = "Enable Silent Aim (hitbox expand)",
+    CurrentValue = State.get("silentAim"),
+    Flag = "silentAim",
+    Callback = function(on)
+        State.update({ silentAim = on })
+        if on then SilentAim.start() else SilentAim.stop() end
+    end
+})
+RageTab:CreateSlider({
+    Name = "Silent Aim Hitbox Size",
+    Range = {5, 30},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = State.get("silentAimSize"),
+    Flag = "silentAimSize",
+    Callback = function(v)
+        State.update({ silentAimSize = v })
     end
 })
 
