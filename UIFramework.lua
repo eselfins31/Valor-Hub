@@ -23,7 +23,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "Valor Hub",
     LoadingSubtitle = "Roblox-friendly UI",
     ConfigurationSaving = {
-        Enabled = true,
+        Enabled = false,
         FolderName = "ValorHub",
         FileName = "UserConfig"
     },
