@@ -14,6 +14,7 @@ local Services = loadstring(fetch("src/Services.lua"))()
 local ESP = loadstring(fetch("src/ESP.lua"))()(Services, State)
 -- Aimbot removed in rage-only build
 local Rage = loadstring(fetch("src/Rage.lua"))()(Services, State)
+local FOV = loadstring(fetch("src/FOV.lua"))()(Services, State)
 local Movement = loadstring(fetch("src/Movement.lua"))()(Services, State)
 local WeaponMods = loadstring(fetch("src/WeaponMods.lua"))()(Services, State)
 local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
@@ -92,14 +93,14 @@ HomeTab:CreateSection("Quick Actions")
 HomeTab:CreateButton({
     Name = "Start All",
     Callback = function()
-        ESP.start(); Rage.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
+        ESP.start(); Rage.start(); FOV.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
         Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules started", Duration = 4 })
     end
 })
 HomeTab:CreateButton({
     Name = "Stop All",
     Callback = function()
-        ESP.stop(); Rage.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
+        ESP.stop(); Rage.stop(); FOV.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
         Rayfield:Notify({ Title = "Valor Hub - Arsenal", Content = "Modules stopped", Duration = 4 })
     end
 })
