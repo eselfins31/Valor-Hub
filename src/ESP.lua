@@ -8,6 +8,39 @@ return function(Services, State)
     -- Prototypes copied from workingesphere.lua mechanics
     local nameBillboardPrototype
     local boxBillboardPrototype
+    -- Tracer drawings per player
+    local drawings = {}
+
+    local function colorFor(player)
+        if State.get("espUseTeamColor") and player.Team and player.Team.TeamColor then
+            return player.Team.TeamColor.Color
+        end
+        if player.Team == LocalPlayer.Team then
+            return State.get("espTeamColor")
+        else
+            return State.get("espEnemyColor")
+        end
+    end
+
+    local function ensureTracer(player)
+        if drawings[player] then return end
+        local ok = pcall(function() return Drawing end)
+        if not ok then return end
+        local line = Drawing.new("Line")
+        line.Thickness = State.get("espThickness")
+        line.Transparency = 1
+        line.Visible = false
+        drawings[player] = { line = line }
+    end
+
+    local function removeTracer(player)
+        if drawings[player] then
+            pcall(function()
+                if drawings[player].line then drawings[player].line:Remove() end
+            end)
+            drawings[player] = nil
+        end
+    end
 
     local function createPrototypes()
         if nameBillboardPrototype and boxBillboardPrototype then return end
@@ -85,6 +118,7 @@ return function(Services, State)
             local boxClone = boxBillboardPrototype:Clone()
             boxClone.Parent = hrp
         end
+        if State.get("espShowTracers") then ensureTracer(player) end
     end
 
     local function removeForPlayer(player)
@@ -94,17 +128,16 @@ return function(Services, State)
         local hrp = getHRP(character)
         if head and head:FindFirstChild("esp") then head.esp:Destroy() end
         if hrp and hrp:FindFirstChild("mainesp") then hrp.mainesp:Destroy() end
+        removeTracer(player)
     end
 
     function ESP.start()
         createPrototypes()
 
         RunService.RenderStepped:Connect(function()
+            -- Clean all if disabled
             if not State.get("espEnabled") then
-                -- Clean all if disabled
-                for _, v in ipairs(Players:GetPlayers()) do
-                    if v ~= LocalPlayer then removeForPlayer(v) end
-                end
+                for _, v in ipairs(Players:GetPlayers()) do if v ~= LocalPlayer then removeForPlayer(v) end end
                 return
             end
 
@@ -117,22 +150,56 @@ return function(Services, State)
                     local head = char and getHead(char)
                     local hrp = char and getHRP(char)
                     if char and head and hrp then
-                        -- Create if missing
                         ensureForPlayer(v)
 
-                        -- Team filtering like working script
-                        if teamCheck and v.Team == LocalPlayer.Team then
-                            removeForPlayer(v)
-                        else
-                            -- Apply visibility via transparency like working script
-                            local headGui = head:FindFirstChild("esp")
-                            local bodyGui = hrp:FindFirstChild("mainesp")
-                            if headGui and headGui:FindFirstChild("name") then
-                                headGui.name.TextTransparency = show and 0 or 1
-                                headGui.name.Text = v.Name
+                        local enemy = (not teamCheck) or (v.Team ~= LocalPlayer.Team)
+                        -- name label
+                        local headGui = head:FindFirstChild("esp")
+                        if headGui and headGui:FindFirstChild("name") then
+                            local nameLbl = headGui.name
+                            if State.get("espShowHealth") then
+                                local hum = char:FindFirstChildOfClass("Humanoid")
+                                if hum then
+                                    nameLbl.Text = string.format("%s | %d", v.Name, math.floor(hum.Health))
+                                else
+                                    nameLbl.Text = v.Name
+                                end
+                            else
+                                nameLbl.Text = v.Name
                             end
-                            if bodyGui and bodyGui:FindFirstChild("box") then
-                                bodyGui.box.ImageTransparency = show and 0.43 or 1
+                            nameLbl.TextTransparency = (show and enemy and State.get("espShowNames")) and 0 or 1
+                            nameLbl.TextSize = State.get("espTextSize")
+                            nameLbl.TextColor3 = colorFor(v)
+                        end
+                        -- box image
+                        local bodyGui = hrp:FindFirstChild("mainesp")
+                        if bodyGui and bodyGui:FindFirstChild("box") then
+                            bodyGui.box.Image = (State.get("espMode") == "Corner") and "rbxassetid://14519771515" or "rbxassetid://16946608585"
+                            bodyGui.box.ImageTransparency = (show and enemy) and 0.43 or 1
+                        end
+                        -- tracers
+                        local rec = drawings[v]
+                        if rec and rec.line then
+                            local cam = workspace.CurrentCamera
+                            local pos, onScreen = cam:WorldToViewportPoint(hrp.Position)
+                            if onScreen and show and enemy and State.get("espShowTracers") then
+                                local origin
+                                local cx, cy = cam.ViewportSize.X/2, cam.ViewportSize.Y/2
+                                local originMode = State.get("espTracerOrigin")
+                                if originMode == "Top" then
+                                    origin = Vector2.new(cx, 0)
+                                elseif originMode == "Center" then
+                                    origin = Vector2.new(cx, cy)
+                                else
+                                    origin = Vector2.new(cx, cam.ViewportSize.Y)
+                                end
+                                rec.line.From = origin
+                                rec.line.To = Vector2.new(pos.X, pos.Y)
+                                rec.line.Color = colorFor(v)
+                                rec.line.Thickness = State.get("espThickness")
+                                rec.line.Visible = true
+                            else
+                                rec.line.Visible = false
                             end
                         end
                     else
