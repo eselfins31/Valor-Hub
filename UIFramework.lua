@@ -200,7 +200,7 @@ WeaponsTab:CreateToggle({
 -- Movement
 MovementTab:CreateSection("Player")
 MovementTab:CreateToggle({
-    Name = "Infinite Jump",
+    Name = "Infinite Jump v2 (With Air Strafe Exploit)",
     CurrentValue = State.get("infiniteJump"),
     Flag = "infiniteJump",
     Callback = function(on)
@@ -229,10 +229,21 @@ MovementTab:CreateSlider({
         Movement.applySpeed(v)
     end
 })
+MovementTab:CreateSlider({
+    Name = "Air Strafe Speed",
+    Range = {0, 200},
+    Increment = 5,
+    Suffix = "u/s",
+    CurrentValue = State.get("airStrafeSpeed"),
+    Flag = "airStrafeSpeed",
+    Callback = function(v)
+        State.update({ airStrafeSpeed = v })
+    end
+})
 
 MovementTab:CreateSection("Advanced Movement")
 MovementTab:CreateToggle({
-    Name = "NOCLIP (walk through walls)",
+    Name = "NOCLIP v2 (With floor check)",
     CurrentValue = State.get("noclipEnabled"),
     Flag = "noclipEnabled",
     Callback = function(on)

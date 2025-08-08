@@ -21,6 +21,7 @@ State.settings = {
     noclipEnabled = false,
     flyEnabled = false,
     flySpeed = 60,
+    airStrafeSpeed = 80,
 
     -- Weapons
     ammoMod = false,

@@ -43,14 +43,46 @@ return function(Services, State)
         end
     end
 
-    -- Infinite Jump
+    -- build desired strafe vector from inputs
+    local function getCameraStrafeVector(speed)
+        local cam = workspace.CurrentCamera
+        local cf = cam.CFrame
+        local dir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cf.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cf.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cf.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cf.RightVector end
+        dir = Vector3.new(dir.X, 0, dir.Z)
+        if dir.Magnitude > 0 then
+            dir = dir.Unit * speed
+        end
+        return dir
+    end
+
+    -- Infinite Jump with force-strafe
     function Movement.startInfiniteJump()
         Movement.stopInfiniteJump()
         infiniteJumpConn = UserInputService.JumpRequest:Connect(function()
             if State.get("infiniteJump") then
                 local humanoid = getHumanoid()
-                if humanoid then
+                local hrp = getRoot()
+                if humanoid and hrp then
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    -- Apply horizontal strafe impulse aligned to camera
+                    local hSpeed = State.get("airStrafeSpeed")
+                    local desired = getCameraStrafeVector(hSpeed)
+                    if desired.Magnitude > 0 then
+                        -- preserve vertical velocity while correcting lateral movement
+                        local newVel = Vector3.new(desired.X, hrp.Velocity.Y, desired.Z)
+                        -- brief velocity set to lock direction of the jump
+                        hrp.Velocity = newVel
+                        -- safety: small impulse via BodyVelocity for a frame
+                        local bv = Instance.new("BodyVelocity")
+                        bv.MaxForce = Vector3.new(1e5, 0, 1e5)
+                        bv.Velocity = Vector3.new(desired.X, 0, desired.Z)
+                        bv.Parent = hrp
+                        game:GetService("Debris"):AddItem(bv, 0.05)
+                    end
                 end
             end
         end)
