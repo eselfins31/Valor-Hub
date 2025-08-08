@@ -50,6 +50,7 @@ local VisualsTab = Window:CreateTab("Visuals", 4483362458)
 local CombatTab = Window:CreateTab("Combat", 13014552420)
 local WeaponsTab = Window:CreateTab("Weapons", 4483362458)
 local MovementTab = Window:CreateTab("Movement", 4483362458)
+local AirTab = MovementTab -- alias used below for grouping
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
 
 -- Home
@@ -225,6 +226,38 @@ MovementTab:CreateSlider({
     Flag = "walkSpeed",
     Callback = function(v)
         State.update({ walkSpeed = v })
+        Movement.applySpeed(v)
+    end
+})
+
+MovementTab:CreateSection("Advanced Movement")
+MovementTab:CreateToggle({
+    Name = "NOCLIP (walk through walls)",
+    CurrentValue = State.get("noclipEnabled"),
+    Flag = "noclipEnabled",
+    Callback = function(on)
+        State.update({ noclipEnabled = on })
+        if on then Movement.startNoclip() else Movement.stopNoclip() end
+    end
+})
+MovementTab:CreateToggle({
+    Name = "FLY (W/A/S/D + Space/Shift)",
+    CurrentValue = State.get("flyEnabled"),
+    Flag = "flyEnabled",
+    Callback = function(on)
+        State.update({ flyEnabled = on })
+        if on then Movement.startFly() else Movement.stopFly() end
+    end
+})
+MovementTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 200},
+    Increment = 5,
+    Suffix = "u/s",
+    CurrentValue = State.get("flySpeed"),
+    Flag = "flySpeed",
+    Callback = function(v)
+        State.update({ flySpeed = v })
     end
 })
 
