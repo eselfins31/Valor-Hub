@@ -514,6 +514,9 @@ Rayfield:LoadConfiguration()
 -- Start HUD if enabled
 if State.get("hudEnabled") then HUD.start() end
 
+-- Always start FOV drawer (uses rage FOV settings)
+FOV.start()
+
 -- Initial notification
 Rayfield:Notify({
     Title = "Valor Hub - Arsenal",

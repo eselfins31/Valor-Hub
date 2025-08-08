@@ -22,11 +22,11 @@ return function(Services, State)
             c.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
             c.Radius = State.get("rageFovRadius")
             c.Color = State.get("rageFovColor")
-            c.Visible = State.get("drawRageFov")
+            c.Visible = State.get("drawRageFov") == true
             c.NumSides = 64
             c.Filled = false
             c.Transparency = State.get("rageFovTransparency")
-            c.Thickness = 0
+            c.Thickness = 1
         end)
         if not ok then return end
     end
