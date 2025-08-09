@@ -412,7 +412,6 @@ MovementTab:CreateToggle({
     end
 })
 
--- Extras
 CombatTab:CreateSection("Silent Aim")
 CombatTab:CreateToggle({
     Name = "Enable Silent Aim (hitbox expand)",
@@ -435,7 +434,6 @@ CombatTab:CreateSlider({
     end
 })
 
--- UI & Config
 UITab:CreateSection("Interface")
 UITab:CreateToggle({
     Name = "UI Blur",
@@ -481,7 +479,6 @@ UITab:CreateKeybind({
     end
 })
 
--- Info Tab
 InfoTab:CreateSection("About")
 InfoTab:CreateParagraph({
     Title = "Valor Hub - Arsenal",
@@ -496,16 +493,12 @@ InfoTab:CreateParagraph({
     Content = "Owner: Eselfin31. UI powered by Rayfield."
 })
 
--- Load saved config
 Rayfield:LoadConfiguration()
 
--- Start HUD if enabled
 if State.get("hudEnabled") then HUD.start() end
 
--- Always start FOV drawer (uses rage FOV settings)
 FOV.start()
 
--- Initial notification
 Rayfield:Notify({
     Title = "Valor Hub - Arsenal",
     Content = "UI loaded successfully",
