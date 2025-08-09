@@ -29,10 +29,19 @@ return function(Services, State)
         return ev
     end
 
-    local function fireEvent(name, ...)
+    local function fireEvent(name)
         local r = resolveEvent(name)
         if not r or not r:IsA("RemoteEvent") then return false end
-        local ok = pcall(function(...) r:FireServer(...) end, ...)
+        local ok = pcall(function() r:FireServer() end)
+        return ok == true
+    end
+
+    local function fireEventWithMachine(name, machine)
+        local r = resolveEvent(name)
+        if not r or not r:IsA("RemoteEvent") then return false end
+        -- Prefer machine arg; fallback to no-arg if it errors
+        local ok = pcall(function() r:FireServer(machine) end)
+        if not ok then ok = pcall(function() r:FireServer() end) end
         return ok == true
     end
 
@@ -83,46 +92,41 @@ return function(Services, State)
         if cf and hrp then hrp.CFrame = cf end
     end
 
-    -- Helpers to find computers owned by player
-    local function isOwnedByPlayer(model)
-        if model:GetAttribute("Owner") == LocalPlayer.Name then return true end
-        local ownerTag = model:FindFirstChild("Owner")
-        if ownerTag and ownerTag:IsA("StringValue") and ownerTag.Value == LocalPlayer.Name then return true end
+    -- PlayerData/Placed helpers
+    local function getPlacedRoot()
+        local playerFolder = LocalPlayer
+        if not playerFolder then return nil end
+        local pd = playerFolder:FindFirstChild("PlayerData")
+        if not pd then pd = playerFolder:FindFirstChildOfClass("Folder") end
+        return pd and pd:FindFirstChild("Placed") or nil
+    end
+
+    local function hasCrypto(machine)
+        local cryptoFolder = machine and machine:FindFirstChild("Crypto")
+        if not cryptoFolder then return false end
+        for _, child in ipairs(cryptoFolder:GetChildren()) do
+            return true -- any child indicates stored crypto
+        end
         return false
     end
 
-    local function findComputers()
-        local results = {}
-        for _, inst in ipairs(workspace:GetDescendants()) do
-            if inst:IsA("Model") or inst:IsA("Folder") then
-                local n = inst.Name:lower()
-                if n:find("computer") or n:find("pc") then
-                    table.insert(results, inst)
-                end
-            end
-        end
-        return results
-    end
-
-    -- Auto Collect via Remote (collect all from all computers)
+    -- Auto Collect via ClaimCrypto per machine that has crypto
     function Farm.startAutoCollect()
         Farm.stopAutoCollect()
-        local accum = 0
+        local scanAccum = 0
         collectConn = RunService.Heartbeat:Connect(function(dt)
             if not State.get("autoCollect") then return end
-            accum += dt
-            if accum < 0.2 then return end -- 5x per second
-            accum = 0
-            -- attempt blanket collect (no args)
-            fireEvent("ClaimCrypto")
-            -- attempt per-computer collects
-            for _, comp in ipairs(findComputers()) do
-                if isOwnedByPlayer(comp) then
-                    fireEvent("ClaimCrypto", comp)
-                else
-                    -- Some games require the top-level model or a child part
-                    local candidate = comp:FindFirstChildWhichIsA("BasePart") or comp
-                    fireEvent("ClaimCrypto", candidate)
+            scanAccum += dt
+            if scanAccum < 0.5 then return end -- scan twice a second to reduce load
+            scanAccum = 0
+
+            local placed = getPlacedRoot()
+            if not placed then return end
+
+            for _, machine in ipairs(placed:GetChildren()) do
+                if hasCrypto(machine) then
+                    fireEventWithMachine("ClaimCrypto", machine)
+                    task.wait(0.03)
                 end
             end
         end)
@@ -132,18 +136,16 @@ return function(Services, State)
         if collectConn then collectConn:Disconnect(); collectConn = nil end
     end
 
-    -- Auto Sell via Remote (sell everything)
+    -- Auto Sell via Remote (global)
     function Farm.startAutoSell()
         Farm.stopAutoSell()
         local accum = 0
         sellConn = RunService.Heartbeat:Connect(function(dt)
             if not State.get("autoSell") then return end
             accum += dt
-            if accum < 0.4 then return end -- 2.5x per second
+            if accum < 0.5 then return end -- 2x per second
             accum = 0
-            -- Common variants: no args, "All"
             fireEvent("SellCrypto")
-            fireEvent("SellCrypto", "All")
         end)
     end
 
