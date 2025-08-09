@@ -1,240 +1,140 @@
--- Robust Rayfield loader with mirrors
-local function loadRayfield()
-    local mirrors = {
-        "https://sirius.menu/rayfield",
-        "https://raw.githubusercontent.com/shlexware/Rayfield/main/source",
-        "https://raw.githubusercontent.com/SiriusMenu/Rayfield/main/source",
-    }
-    for _, url in ipairs(mirrors) do
-        local ok, src = pcall(function() return game:HttpGet(url, true) end)
-        if ok and type(src) == "string" and #src > 0 then
-            local fn = loadstring(src)
-            if fn then
-                local ok2, lib = pcall(fn)
-                if ok2 and lib then return lib end
-            end
-        end
-    end
-    return nil
-end
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
 
-local Rayfield = loadRayfield()
-
--- Safe notify fallback
-local function notify(msg)
-    if Rayfield and Rayfield.Notify then
-        pcall(function() Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = msg, Duration = 6 }) end)
-    else
-        pcall(function()
-            game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Valor Hub - CryptoFarm", Text = tostring(msg), Duration = 6 })
-        end)
-        warn("[Valor Hub - CryptoFarm] " .. tostring(msg))
-    end
-end
-
+-- Point BASE at CryptoFarm folder so we can use src/*.lua paths
 local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main/CryptoFarm"
+
+local function notifyErr(msg)
+    pcall(function()
+        Rayfield:Notify({ Title = "Valor Hub - Crypto Farm", Content = msg, Duration = 6 })
+    end)
+end
+
 local function fetch(path)
-    local ok, res = pcall(function() return game:HttpGet(BASE .. "/" .. path, true) end)
-    if not ok or not res or #res == 0 then notify("Fetch failed: " .. tostring(path)) return nil end
+    local ok, res = pcall(function()
+        return game:HttpGet(BASE .. "/" .. path, true)
+    end)
+    if not ok or not res or #res == 0 then
+        notifyErr("Fetch failed: " .. tostring(path))
+        return nil
+    end
     return res
 end
+
 local function loadChunk(source, name)
     if not source then return nil end
     local fn, err = loadstring(source)
-    if not fn then notify("Load error: " .. tostring(name) .. ": " .. tostring(err)) return nil end
+    if not fn then
+        notifyErr("Load error: " .. tostring(name) .. " -> " .. tostring(err))
+        return nil
+    end
     local ok, rv = pcall(fn)
-    if not ok then notify("Run error: " .. tostring(name) .. ": " .. tostring(rv)) return nil end
+    if not ok then
+        notifyErr("Run error: " .. tostring(name) .. " -> " .. tostring(rv))
+        return nil
+    end
     return rv
 end
 
-local State = loadChunk(fetch("src/State.lua"), "State") or { settings = {}, update=function() end, get=function() end }
-local Services = loadChunk(fetch("src/Services.lua"), "Services") or { Players=game:GetService("Players"), RunService=game:GetService("RunService"), UserInputService=game:GetService("UserInputService"), TweenService=game:GetService("TweenService"), Lighting=game:GetService("Lighting"), ReplicatedStorage=game:GetService("ReplicatedStorage"), CollectionService=game:GetService("CollectionService"), HttpService=game:GetService("HttpService") }
+-- Load modules from CryptoFarm/src with safe fallbacks
+local State     = loadChunk(fetch("src/State.lua"), "State") or { settings = {}, update = function() end, get = function() return nil end }
+local Services  = loadChunk(fetch("src/Services.lua"), "Services") or { Players = game:GetService("Players"), RunService = game:GetService("RunService"), UserInputService = game:GetService("UserInputService"), TweenService = game:GetService("TweenService"), Lighting = game:GetService("Lighting"), ReplicatedStorage = game:GetService("ReplicatedStorage") }
 
--- load modules
-local TeleportInit = loadChunk(fetch("src/Teleport.lua"), "Teleport")
-local AutomationInit = loadChunk(fetch("src/Automation.lua"), "Automation")
-local DebugInit = loadChunk(fetch("src/Debug.lua"), "Debug")
-local Teleport = TeleportInit and TeleportInit(Services, State) or nil
-local Automation = AutomationInit and AutomationInit(Services, State) or nil
-local Debug = DebugInit and DebugInit(Services, State) or nil
+local function loadInitModule(path, name)
+    local init = loadChunk(fetch(path), name)
+    if not init then
+        notifyErr(name .. " init missing; using stub")
+        return { start = function() end, stop = function() end }
+    end
+    local ok, mod = pcall(function() return init(Services, State) end)
+    if not ok or not mod then
+        notifyErr(name .. " init failed; using stub")
+        return { start = function() end, stop = function() end }
+    end
+    return mod
+end
+
+local Movement  = loadInitModule("src/Movement.lua", "Movement")
+local Farm      = loadInitModule("src/Farm.lua", "Farm")
 
 local Window = Rayfield:CreateWindow({
-    Name = "Valor Hub - CryptoFarm",
-    LoadingTitle = "Valor Hub - CryptoFarm",
+    Name = "Valor Hub - Crypto Farm",
+    LoadingTitle = "Valor Hub - Crypto Farm",
     LoadingSubtitle = "Roblox-friendly UI",
-    ConfigurationSaving = { Enabled = false, FolderName = "ValorHub", FileName = "UserConfig" },
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = "ValorHub",
+        FileName = "UserConfig"
+    },
     Discord = { Enabled = false, Invite = "", RememberJoins = true },
     KeySystem = false,
-    KeySettings = { Title = "Valor Hub - CryptoFarm", Subtitle = "Authentication", Note = "", FileName = "ValorHubKey", SaveKey = true, GrabKeyFromSite = false, Key = "" }
+    KeySettings = { Title = "Valor Hub - Crypto Farm", Subtitle = "Authentication", Note = "", FileName = "ValorHubKey", SaveKey = true, GrabKeyFromSite = false, Key = "" }
 })
 
-local TeleTab = Window:CreateTab("Teleport", 4483362458)
-local AutoTab = Window:CreateTab("Auto", 4483362458)
-local InfoTab = Window:CreateTab("Info", 4483362458)
-local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
-local DebugTab = Window:CreateTab("Debug", 4483362458)
+local HomeTab     = Window:CreateTab("Home", 4483362458)
+local FarmTab     = Window:CreateTab("Farm", 4483362458)
+local MovementTab = Window:CreateTab("Movement", 4483362458)
+local UITab       = Window:CreateTab("UI & Config", 4483362458)
+local InfoTab     = Window:CreateTab("Info", 4483362458)
 
--- Teleport features
-TeleTab:CreateSection("Click Teleport")
-TeleTab:CreateToggle({
-    Name = "Enable Click TP",
-    CurrentValue = State.get and State.get("clickTp") or false,
+-- Farm tab features
+FarmTab:CreateSection("Teleport")
+FarmTab:CreateToggle({
+    Name = "Click Teleport",
+    CurrentValue = State.get("clickTeleportEnabled"),
+    Flag = "clickTeleportEnabled",
     Callback = function(on)
-        if Teleport and Teleport.enableClickTp then Teleport.enableClickTp(on) end
-        if State.update then State.update({ clickTp = on }) end
+        State.update({ clickTeleportEnabled = on })
+        if on then Farm.startClickTeleport() else Farm.stopClickTeleport() end
     end
 })
-TeleTab:CreateSection("Saved Points")
-TeleTab:CreateInput({
-    Name = "Save Current Position As",
-    PlaceholderText = "Point name",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(name)
-        if Teleport and Teleport.savePoint then Teleport.savePoint(name) end
+FarmTab:CreateButton({
+    Name = "Save Point (current position)",
+    Callback = function()
+        local name = Farm.saveCurrentPoint()
+        Rayfield:Notify({ Title = "Valor Hub - Crypto Farm", Content = "Saved point: " .. tostring(name), Duration = 4 })
     end
 })
-TeleTab:CreateDropdown({
-    Name = "Teleport To Saved",
-    Options = {},
+FarmTab:CreateDropdown({
+    Name = "Teleport to Saved Point",
+    Options = Farm.listPoints(),
     CurrentOption = "",
-    Flag = "tpSaved",
-    Callback = function(name)
-        if Teleport and Teleport.teleportToSaved then Teleport.teleportToSaved(name) end
-    end
-})
-TeleTab:CreateButton({
-    Name = "Refresh Points",
-    Callback = function()
-        if Teleport and Teleport.getSavedNames and Rayfield and Rayfield.UpdateDropdown then
-            local names = Teleport.getSavedNames()
-            Rayfield:UpdateDropdown("tpSaved", names)
-        end
+    Flag = "teleportPoint",
+    Callback = function(opt)
+        Farm.teleportToPoint(opt)
     end
 })
 
--- Automation
-AutoTab:CreateSection("Auto Actions")
-AutoTab:CreateToggle({
+FarmTab:CreateSection("Automation")
+FarmTab:CreateToggle({
     Name = "Auto Collect",
-    CurrentValue = false,
+    CurrentValue = State.get("autoCollect"),
+    Flag = "autoCollect",
     Callback = function(on)
-        if Automation and Automation.autoCollect then Automation.autoCollect(on) end
+        State.update({ autoCollect = on })
+        if on then Farm.startAutoCollect() else Farm.stopAutoCollect() end
     end
 })
-AutoTab:CreateToggle({
+FarmTab:CreateToggle({
     Name = "Auto Sell Inventory",
-    CurrentValue = false,
+    CurrentValue = State.get("autoSell"),
+    Flag = "autoSell",
     Callback = function(on)
-        if Automation and Automation.autoSell then Automation.autoSell(on) end
+        State.update({ autoSell = on })
+        if on then Farm.startAutoSell() else Farm.stopAutoSell() end
     end
 })
 
-AutoTab:CreateSection("Movement")
-AutoTab:CreateToggle({
-    Name = "Speed Hack",
-    CurrentValue = State.get and State.get("speedEnabled") or false,
-    Callback = function(on)
-        if State.update then State.update({ speedEnabled = on }) end
-        if Automation and Automation.Movement then
-            if on then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
-            else Automation.Movement.stopSpeed() end
-        end
-    end
-})
-AutoTab:CreateSlider({
-    Name = "WalkSpeed",
-    Range = {16, 250},
-    Increment = 1,
-    Suffix = "ws",
-    CurrentValue = State.get and State.get("walkSpeed") or 100,
-    Callback = function(v)
-        if State.update then State.update({ walkSpeed = v }) end
-        if State.get and State.get("speedEnabled") and Automation and Automation.Movement then
-            Automation.Movement.applySpeed(v)
-        end
-    end
-})
+-- Movement
+MovementTab:CreateSection("Player")
+MovementTab:CreateToggle({ Name = "Infinite Jump", CurrentValue = State.get("infiniteJump"), Flag = "infiniteJump", Callback = function(on) State.update({ infiniteJump = on }); if on then Movement.startInfiniteJump() else Movement.stopInfiniteJump() end end })
+MovementTab:CreateToggle({ Name = "Speed Hack", CurrentValue = State.get("speedEnabled"), Flag = "speedEnabled", Callback = function(on) State.update({ speedEnabled = on }); if on then Movement.startSpeed() else Movement.stopSpeed() end end })
+MovementTab:CreateSlider({ Name = "WalkSpeed", Range = {16, 250}, Increment = 1, Suffix = "ws", CurrentValue = State.get("walkSpeed"), Flag = "walkSpeed", Callback = function(v) State.update({ walkSpeed = v }); Movement.applySpeed(v) end })
 
--- Info
+-- UI
+UITab:CreateSection("Interface")
+UITab:CreateButton({ Name = "Destroy UI", Callback = function() Rayfield:Destroy() end })
+
 InfoTab:CreateSection("About")
-InfoTab:CreateParagraph({ Title = "Valor Hub - CryptoFarm", Content = "Grow A Crypto Farm utility: click TP, saved TP points, auto-collect, auto-sell." })
+InfoTab:CreateParagraph({ Title = "Valor Hub - Crypto Farm", Content = "Grow a Crypto Farm automation: click teleport, saved points, auto collect, auto sell." })
 
--- Keybind listener
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    local kc = input.KeyCode
-    if State.get and kc == Enum.KeyCode[State.get("bindClickTpToggle") or "Unknown"] then
-        local cur = State.get("clickTp")
-        if State.update then State.update({ clickTp = not cur }) end
-        if Teleport and Teleport.enableClickTp then Teleport.enableClickTp(not cur) end
-        notify("Click TP: " .. tostring(not cur))
-    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoCollectToggle") or "Unknown"] then
-        if Automation and Automation.autoCollect then
-            local flip = not (Automation.__collecting or false)
-            Automation.autoCollect(flip)
-            notify("Auto Collect: " .. tostring(flip))
-        end
-    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoSellToggle") or "Unknown"] then
-        if Automation and Automation.autoSell then
-            local flip = not (Automation.__selling or false)
-            Automation.autoSell(flip)
-            notify("Auto Sell: " .. tostring(flip))
-        end
-    elseif State.get and kc == Enum.KeyCode[State.get("bindSpeedToggle") or "Unknown"] then
-        local flip = not (State.get("speedEnabled") or false)
-        if State.update then State.update({ speedEnabled = flip }) end
-        if Automation and Automation.Movement then
-            if flip then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
-            else Automation.Movement.stopSpeed() end
-        end
-        notify("Speed: " .. tostring(flip))
-    end
-end)
-
--- Keybinds tab controls
-local keyOptions = {"Q","E","R","T","Y","U","I","O","P","G","H","J","K","L","Z","X","C","V","B","N","M","LeftAlt","RightAlt","LeftShift","RightShift","F"}
-local function bindDropdown(tab, label, stateKey)
-    tab:CreateDropdown({
-        Name = label,
-        Options = keyOptions,
-        CurrentOption = State.get and State.get(stateKey) or "",
-        Flag = stateKey,
-        Callback = function(opt)
-            if State.update then State.update({ [stateKey] = opt }) end
-            notify(label .. " set to " .. tostring(opt))
-        end
-    })
-end
-KeybindsTab:CreateSection("Toggle Binds")
-bindDropdown(KeybindsTab, "Toggle Click TP", "bindClickTpToggle")
-bindDropdown(KeybindsTab, "Toggle Auto Collect", "bindAutoCollectToggle")
-bindDropdown(KeybindsTab, "Toggle Auto Sell", "bindAutoSellToggle")
-bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
-
--- Debug tab
-DebugTab:CreateSection("Remote Spy")
-DebugTab:CreateToggle({
-    Name = "Enable Spy",
-    CurrentValue = false,
-    Callback = function(on)
-        if not Debug then return end
-        if on then Debug.start(); Debug.showGui() else Debug.stop(); Debug.hideGui() end
-    end
-})
-DebugTab:CreateInput({
-    Name = "Filter (case-insensitive)",
-    PlaceholderText = "e.g. sell, collect, all",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        if Debug then Debug.setFilter(text) end
-    end
-})
-DebugTab:CreateButton({
-    Name = "Copy Log",
-    Callback = function()
-        if Debug then Debug.copyLog() end
-    end
-})
-
-Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = "UI loaded", Duration = 4 })
+Rayfield:LoadConfiguration()
