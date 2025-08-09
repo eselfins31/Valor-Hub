@@ -5,10 +5,8 @@ return function(Services, State)
     local RunService = Services.RunService
     local LocalPlayer = Players.LocalPlayer
 
-    -- Prototypes copied from workingesphere.lua mechanics
     local nameBillboardPrototype
     local boxBillboardPrototype
-    -- Tracer drawings per player
     local drawings = {}
 
     local function colorFor(player)
@@ -47,7 +45,6 @@ return function(Services, State)
     local function createPrototypes()
         if nameBillboardPrototype and boxBillboardPrototype then return end
 
-        -- Name Billboard on Head
         local esp = Instance.new("BillboardGui")
         esp.Name = "esp"
         esp.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -68,11 +65,10 @@ return function(Services, State)
         name.TextSize = 9
         name.TextStrokeTransparency = 0
         name.TextWrapped = true
-        name.TextTransparency = 1 -- default hidden like working script
+        name.TextTransparency = 1
 
         nameBillboardPrototype = esp
 
-        -- Box Billboard on HumanoidRootPart
         local mainesp = Instance.new("BillboardGui")
         mainesp.Name = "mainesp"
         mainesp.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -88,9 +84,8 @@ return function(Services, State)
         box.BackgroundTransparency = 1
         box.Size = UDim2.new(1, 0, 1, 0)
         box.Image = "rbxassetid://16946608585"
-        box.ImageTransparency = 1 -- default hidden like working script
+        box.ImageTransparency = 1
 
-        -- Health bar along left side
         local hb = Instance.new("Frame")
         hb.Name = "healthbar"
         hb.Parent = mainesp
@@ -99,7 +94,7 @@ return function(Services, State)
         hb.BackgroundTransparency = 0.3
         hb.AnchorPoint = Vector2.new(0, 1)
         hb.Position = UDim2.new(0, 0, 1, 0)
-        hb.Size = UDim2.new(0, 3, 0, 0) -- height set per frame
+        hb.Size = UDim2.new(0, 3, 0, 0)
 
         boxBillboardPrototype = mainesp
     end
@@ -148,7 +143,6 @@ return function(Services, State)
         createPrototypes()
 
         RunService.RenderStepped:Connect(function()
-            -- Clean all if disabled
             if not State.get("espEnabled") then
                 for _, v in ipairs(Players:GetPlayers()) do if v ~= LocalPlayer then removeForPlayer(v) end end
                 return
@@ -166,7 +160,6 @@ return function(Services, State)
                         ensureForPlayer(v)
 
                         local enemy = (not teamCheck) or (v.Team ~= LocalPlayer.Team)
-                        -- name label
                         local headGui = head:FindFirstChild("esp")
                         if headGui and headGui:FindFirstChild("name") then
                             local nameLbl = headGui.name
@@ -184,7 +177,6 @@ return function(Services, State)
                             nameLbl.TextSize = State.get("espTextSize")
                             nameLbl.TextColor3 = colorFor(v)
                         end
-                        -- box image & health bar
                         local bodyGui = hrp:FindFirstChild("mainesp")
                         if bodyGui then
                             if bodyGui:FindFirstChild("box") then
@@ -201,7 +193,6 @@ return function(Services, State)
                                 hb.BackgroundColor3 = Color3.fromRGB(255 * (1-frac), 255 * frac, 0)
                             end
                         end
-                        -- tracers
                         local rec = drawings[v]
                         if rec and rec.line then
                             local cam = workspace.CurrentCamera

@@ -24,7 +24,6 @@ return function(Services, State)
         runningTasks[key] = nil
     end
 
-    -- Recoil/Spread
     local function applyRecoilMods()
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
         if not weapons then
@@ -39,7 +38,6 @@ return function(Services, State)
         end
     end
 
-    -- Fire rate / Auto
     local function applyFireRateMods()
         local weapons = ReplicatedStorage:FindFirstChild("Weapons")
         if not weapons then
@@ -54,7 +52,6 @@ return function(Services, State)
         end
     end
 
-    -- Ammo GUI variables
     local function applyAmmoMod()
         local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
         if not pg then

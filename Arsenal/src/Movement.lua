@@ -46,7 +46,6 @@ return function(Services, State)
         end
     end
 
-    -- build desired strafe vector from inputs
     local function getCameraStrafeVector(speed)
         local cam = workspace.CurrentCamera
         local cf = cam.CFrame
@@ -62,7 +61,6 @@ return function(Services, State)
         return dir
     end
 
-    -- Infinite Jump with force-strafe
     function Movement.startInfiniteJump()
         Movement.stopInfiniteJump()
         infiniteJumpConn = UserInputService.JumpRequest:Connect(function()
@@ -71,7 +69,6 @@ return function(Services, State)
                 local hrp = getRoot()
                 if humanoid and hrp then
                     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                    -- Apply horizontal strafe impulse aligned to camera
                     local hSpeed = State.get("airStrafeSpeed")
                     local desired = getCameraStrafeVector(hSpeed)
                     if desired.Magnitude > 0 then
@@ -95,7 +92,6 @@ return function(Services, State)
         end
     end
 
-    -- Speed Hack
     function Movement.startSpeed()
         Movement.stopSpeed()
         local humanoid = getHumanoid()
@@ -123,7 +119,6 @@ return function(Services, State)
         end
     end
 
-    -- NOCLIP (while keeping ground)
     local function isNearGround(hrp)
         local origin = hrp.Position
         local dir = Vector3.new(0, -6, 0)
@@ -167,7 +162,6 @@ return function(Services, State)
         end
     end
 
-    -- FLY (unchanged)
     local function updateKeys(input, down)
         if input.KeyCode == Enum.KeyCode.W then keysDown.W = down end
         if input.KeyCode == Enum.KeyCode.A then keysDown.A = down end
@@ -244,14 +238,12 @@ return function(Services, State)
         keysDown = {}
     end
 
-    -- Spider: climb by jumping against walls
     function Movement.startSpider()
         Movement.stopSpider()
         spiderConn = RunService.Stepped:Connect(function()
             if not State.get("spiderEnabled") then return end
             local hrp = getRoot()
             if not hrp then return end
-            -- raycast forward for wall
             local cam = workspace.CurrentCamera
             local forward = cam.CFrame.LookVector
             local params = RaycastParams.new()
@@ -264,7 +256,6 @@ return function(Services, State)
                     spiderBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
                     spiderBV.Parent = hrp
                 end
-                -- push upward and slightly into wall
                 spiderBV.Velocity = Vector3.new(forward.X * 5, 35, forward.Z * 5)
             elseif spiderBV then
                 spiderBV:Destroy()

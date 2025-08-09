@@ -1,13 +1,13 @@
 local State = {}
 
--- Shared toggles/settings used across modules
+-- Общие переключатели/настройки, используемые в разных модулях
 State.settings = {
-    -- Visuals / ESP
+    -- Визуалы / ESP
     espEnabled = false,
-    espShow = false, -- master show/hide
+    espShow = false, -- основное показать/скрыть
     teamCheck = false,
 
-    -- ESP advanced
+    -- Расширенные настройки ESP
     espMode = "Box", -- Box | Corner
     espShowNames = true,
     espShowHealth = true,
@@ -19,20 +19,20 @@ State.settings = {
     espTextSize = 13,
     espTracerOrigin = "Bottom", -- Bottom | Center | Top
 
-    -- Rage (replaces Aimbot)
+    -- Rage (заменяет Aimbot)
     rageFovRadius = 250,
     drawRageFov = false,
     rageFovFilled = false,
     rageFovThickness = 2,
     rageFovColor = Color3.fromRGB(255, 255, 255),
     rageFovTransparency = 1,
-    rageHitchanceAngleDeg = 6, -- lower = stricter
+    rageHitchanceAngleDeg = 6, -- меньше = строже
     rageAutoShoot = false,
     rageTriggerbot = false,
     rageQuickStop = false,
     rageHitbox = "Head", -- Head | HumanoidRootPart
 
-    -- Movement
+    -- Движение
     infiniteJump = false,
     speedEnabled = false,
     walkSpeed = 100,
@@ -42,19 +42,19 @@ State.settings = {
     airStrafeSpeed = 80,
     spiderEnabled = false,
 
-    -- Weapons
+    -- Оружие
     ammoMod = false,
     fireRateMod = false,
     recoilMod = false,
 
-    -- Silent aim (hitbox expand)
+    -- Silent aim (расширение хитбокса)
     silentAim = false,
     silentAimSize = 13,
 
     -- HUD
     hudEnabled = true,
 
-    -- Keybinds (toggle features)
+    -- Клавиши (переключение функций)
     bindEspToggle = "T",
     bindInfJumpToggle = "J",
     bindSpeedToggle = "Z",

@@ -1,7 +1,5 @@
--- Load Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
 
--- Raw GitHub loader: fetch modules via http and inject Services/State
 local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main"
 local function fetch(path)
     return game:HttpGet(BASE .. "/" .. path, true)
@@ -10,9 +8,7 @@ end
 local State = loadstring(fetch("src/State.lua"))()
 local Services = loadstring(fetch("src/Services.lua"))()
 
--- Modules are initializer functions that accept (Services, State)
 local ESP = loadstring(fetch("src/ESP.lua"))()(Services, State)
--- Aimbot removed in rage-only build
 local Rage = loadstring(fetch("src/Rage.lua"))()(Services, State)
 local FOV = loadstring(fetch("src/FOV.lua"))()(Services, State)
 local Movement = loadstring(fetch("src/Movement.lua"))()(Services, State)
@@ -20,7 +16,6 @@ local WeaponMods = loadstring(fetch("src/WeaponMods.lua"))()(Services, State)
 local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
 local HUD = loadstring(fetch("src/HUD.lua"))()(Services, State)
 
--- Window
 local Window = Rayfield:CreateWindow({
     Name = "Valor Hub - Arsenal",
     LoadingTitle = "Valor Hub - Arsenal",
@@ -47,7 +42,6 @@ local Window = Rayfield:CreateWindow({
     }
 })
 
--- Tabs
 local HomeTab   = Window:CreateTab("Home", 4483362458)
 local VisualsTab = Window:CreateTab("Visuals", 4483362458)
 local RageTab = Window:CreateTab("Rage", 13014552420)
@@ -56,7 +50,6 @@ local MovementTab = Window:CreateTab("Movement", 4483362458)
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
 local InfoTab   = Window:CreateTab("Info", 4483362458)
 
--- Keybinds Listener
 local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
@@ -88,7 +81,6 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Home
 HomeTab:CreateSection("Quick Actions")
 HomeTab:CreateButton({
     Name = "Start All",
@@ -105,7 +97,6 @@ HomeTab:CreateButton({
     end
 })
 
--- Visuals / ESP
 VisualsTab:CreateSection("ESP (On test)")
 VisualsTab:CreateToggle({
     Name = "Enable ESP",
@@ -196,7 +187,6 @@ VisualsTab:CreateSlider({
     end
 })
 
--- Rage
 RageTab:CreateSection("Ragebot")
 RageTab:CreateSlider({
     Name = "Rage FOV Radius",
@@ -303,7 +293,6 @@ RageTab:CreateSlider({
     end
 })
 
--- Weapons
 WeaponsTab:CreateSection("Weapon Mods")
 WeaponsTab:CreateToggle({
     Name = "Ammo Mod (999)",
@@ -340,7 +329,6 @@ WeaponsTab:CreateButton({
     end
 })
 
--- Movement
 MovementTab:CreateSection("Player")
 MovementTab:CreateToggle({
     Name = "Infinite Jump v2 (With Air Strafe Exploit)",
