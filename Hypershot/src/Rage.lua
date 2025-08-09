@@ -78,7 +78,11 @@ return function(Services, State)
                         local aim = getAimPart(char)
                         if hum and hum.Health > 0 and aim then
                             local dist = cursorDistance(aim.Position)
-                            if dist <= fov and isVisible(aim) then
+                            local visible = isVisible(aim)
+                            if State.get("silentAim") then
+                                visible = true -- allow through-wall targeting when Silent Aim enabled
+                            end
+                            if dist <= fov and visible then
                                 if not best or dist < bestDist then
                                     best = aim
                                     bestDist = dist

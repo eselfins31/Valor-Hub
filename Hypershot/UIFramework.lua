@@ -324,7 +324,7 @@ RageTab:CreateSlider({
     end
 })
 
-WeaponsTab:CreateSection("Weapon Mods")
+WeaponsTab:CreateSection("Weapon Modz")
 WeaponsTab:CreateToggle({
     Name = "Ammo Mod (999)",
     CurrentValue = State.get("ammoMod"),

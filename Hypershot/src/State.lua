@@ -44,6 +44,9 @@ State.settings = {
     silentAim = false,
     silentAimSize = 13,
 
+    -- Rapid fire helper (clicks per second)
+    rapidFireCPS = 14,
+
     hudEnabled = true,
 
     -- Cosmetics: Rainbow weapon skins
