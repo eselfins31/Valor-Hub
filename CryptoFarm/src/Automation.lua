@@ -2,9 +2,7 @@ return function(Services, State)
     local Auto = {}
 
     local Players = Services.Players
-    local RunService = Services.RunService
     local CollectionService = Services.CollectionService
-    local ReplicatedStorage = Services.ReplicatedStorage
 
     -- Movement helpers
     local Movement = {}
@@ -36,9 +34,10 @@ return function(Services, State)
     end
     Auto.Movement = Movement
 
-    -- Internal flags for keybind flips
+    -- Internal flags/threads
     Auto.__collecting = false
     Auto.__selling = false
+    local collectThread, sellThread
 
     -- Utilities
     local function getHRP()
@@ -49,20 +48,17 @@ return function(Services, State)
 
     local function tpNear(pos)
         local hrp = getHRP()
-        if hrp and pos then
-            hrp.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-        end
+        if hrp and pos then hrp.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end
     end
 
     local function getPromptWorldPos(prompt)
         if not prompt then return nil end
         local parent = prompt.Parent
-        local tries = 0
-        while parent and tries < 4 do
+        for _ = 1, 4 do
+            if not parent then break end
             if parent:IsA("BasePart") then return parent.Position end
-            parent = parent.Parent; tries = tries + 1
+            parent = parent.Parent
         end
-        if prompt.Parent and prompt.Parent:IsA("BasePart") then return prompt.Parent.Position end
         return nil
     end
 
@@ -71,79 +67,102 @@ return function(Services, State)
         local o = (prompt.ObjectText or ""):lower()
         return a:find("collect") or a:find("harvest") or a:find("farm") or o:find("computer") or o:find("pc") or o:find("miner")
     end
-
     local function isSellPrompt(prompt)
         local a = (prompt.ActionText or ""):lower()
         local o = (prompt.ObjectText or ""):lower()
         return a:find("sell") or o:find("sell")
     end
 
-    local function getPrompts()
-        local collects, sells = {}, {}
-        for _, p in ipairs(workspace:GetDescendants()) do
-            if p:IsA("ProximityPrompt") then
-                if isCollectPrompt(p) then table.insert(collects, p)
-                elseif isSellPrompt(p) then table.insert(sells, p) end
+    -- Prompt cache with timed refresh
+    local cache = { collects = {}, sells = {}, nextRefresh = 0 }
+    local function refreshPrompts()
+        if tick() < cache.nextRefresh then return cache.collects, cache.sells end
+        cache.collects, cache.sells = {}, {}
+        -- Prefer tagged parts first
+        for _, inst in ipairs(CollectionService:GetTagged("Collectible")) do
+            for _, p in ipairs(inst:GetDescendants()) do
+                if p:IsA("ProximityPrompt") then table.insert(cache.collects, p) end
             end
         end
-        return collects, sells
+        -- Fallback: scan selectively (not every frame)
+        if #cache.collects == 0 then
+            for _, p in ipairs(workspace:GetDescendants()) do
+                if p:IsA("ProximityPrompt") then
+                    if isCollectPrompt(p) then table.insert(cache.collects, p)
+                    elseif isSellPrompt(p) then table.insert(cache.sells, p) end
+                end
+            end
+        else
+            for _, p in ipairs(workspace:GetDescendants()) do
+                if p:IsA("ProximityPrompt") and isSellPrompt(p) then table.insert(cache.sells, p) end
+            end
+        end
+        cache.nextRefresh = tick() + 2.0 -- refresh every 2 seconds
+        return cache.collects, cache.sells
     end
 
     local function firePrompt(prompt)
         if not prompt or not prompt:IsDescendantOf(workspace) then return end
+        -- Try executor helper first
         local ok = pcall(function() if fireproximityprompt then fireproximityprompt(prompt) end end)
         if ok then return end
+        -- Fallback: simulate hold
         local oldHold, oldRange = prompt.HoldDuration, prompt.MaxActivationDistance
-        prompt.MaxActivationDistance = math.max(oldRange, 20)
+        prompt.MaxActivationDistance = math.max(oldRange, 18)
         prompt.HoldDuration = 0
         pcall(function() prompt:InputHoldBegin() end)
-        task.wait(0.02)
+        task.wait(0.025)
         pcall(function() prompt:InputHoldEnd() end)
         prompt.HoldDuration = oldHold
         prompt.MaxActivationDistance = oldRange
     end
 
-    local collectConn
-    local lastFired = setmetatable({}, {__mode = "k"})
+    local lastFired = setmetatable({}, { __mode = "k" })
 
     function Auto.autoCollect(on)
         Auto.__collecting = on
-        if collectConn then collectConn:Disconnect(); collectConn = nil end
-        if on then
-            collectConn = RunService.Heartbeat:Connect(function()
+        if collectThread then collectThread = nil end
+        if not on then return end
+        collectThread = task.spawn(function()
+            while Auto.__collecting do
+                local collects = refreshPrompts()
+                collects = collects -- no-op (kept for clarity)
                 local fired = 0
-                for _, prompt in ipairs(select(1, getPrompts())) do
-                    if fired >= 4 then break end
+                for _, prompt in ipairs(cache.collects) do
+                    if fired >= 2 then break end -- throttle: 2 prompts per cycle
                     if prompt.Enabled then
                         local t = lastFired[prompt] or 0
-                        if (tick() - t) > 0.5 then
+                        if (tick() - t) > 0.7 then
                             local pos = getPromptWorldPos(prompt)
                             if pos then tpNear(pos) end
                             firePrompt(prompt)
                             lastFired[prompt] = tick()
                             fired += 1
-                            task.wait(0.05)
+                            task.wait(0.08)
                         end
                     end
                 end
-            end)
-        end
+                task.wait(0.35)
+            end
+        end)
     end
 
-    local sellConn
     function Auto.autoSell(on)
         Auto.__selling = on
-        if sellConn then sellConn:Disconnect(); sellConn = nil end
-        if on then
-            sellConn = RunService.Heartbeat:Connect(function()
-                local nearest, nd = nil, math.huge
-                for _, p in ipairs(select(2, getPrompts())) do
+        if sellThread then sellThread = nil end
+        if not on then return end
+        sellThread = task.spawn(function()
+            while Auto.__selling do
+                local _, sells = refreshPrompts()
+                local nearest, nd
+                local hrp = getHRP()
+                local origin = hrp and hrp.Position
+                for _, p in ipairs(sells) do
                     if p.Enabled then
                         local pos = getPromptWorldPos(p)
-                        if pos then
-                            local hrp = getHRP()
-                            local d = (pos - (hrp and hrp.Position or pos)).Magnitude
-                            if d < nd then nd = d; nearest = p end
+                        if pos and origin then
+                            local d = (pos - origin).Magnitude
+                            if not nd or d < nd then nd = d; nearest = p end
                         end
                     end
                 end
@@ -152,9 +171,9 @@ return function(Services, State)
                     if pos then tpNear(pos) end
                     firePrompt(nearest)
                 end
-                task.wait(0.3)
-            end)
-        end
+                task.wait(0.5)
+            end
+        end)
     end
 
     return Auto
