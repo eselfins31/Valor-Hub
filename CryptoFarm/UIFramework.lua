@@ -1,9 +1,38 @@
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
+-- Robust Rayfield loader with mirrors
+local function loadRayfield()
+    local mirrors = {
+        "https://sirius.menu/rayfield",
+        "https://raw.githubusercontent.com/shlexware/Rayfield/main/source",
+        "https://raw.githubusercontent.com/SiriusMenu/Rayfield/main/source",
+    }
+    for _, url in ipairs(mirrors) do
+        local ok, src = pcall(function() return game:HttpGet(url, true) end)
+        if ok and type(src) == "string" and #src > 0 then
+            local fn = loadstring(src)
+            if fn then
+                local ok2, lib = pcall(fn)
+                if ok2 and lib then return lib end
+            end
+        end
+    end
+    return nil
+end
+
+local Rayfield = loadRayfield()
+
+-- Safe notify fallback
+local function notify(msg)
+    if Rayfield and Rayfield.Notify then
+        pcall(function() Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = msg, Duration = 6 }) end)
+    else
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Valor Hub - CryptoFarm", Text = tostring(msg), Duration = 6 })
+        end)
+        warn("[Valor Hub - CryptoFarm] " .. tostring(msg))
+    end
+end
 
 local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main/CryptoFarm"
-local function notify(msg)
-    pcall(function() Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = msg, Duration = 6 }) end)
-end
 local function fetch(path)
     local ok, res = pcall(function() return game:HttpGet(BASE .. "/" .. path, true) end)
     if not ok or not res or #res == 0 then notify("Fetch failed: " .. tostring(path)) return nil end
