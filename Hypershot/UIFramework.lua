@@ -304,7 +304,7 @@ RageTab:CreateToggle({
 
 RageTab:CreateSection("Silent Aim")
 RageTab:CreateToggle({
-    Name = "Enable Silent Aim (hitbox expand)",
+    Name = "Enable Silent Aim (hitbox expand + only head)",
     CurrentValue = State.get("silentAim"),
     Flag = "silentAim",
     Callback = function(on)
@@ -314,7 +314,7 @@ RageTab:CreateToggle({
 })
 RageTab:CreateSlider({
     Name = "Silent Aim Hitbox Size",
-    Range = {5, 150},
+    Range = {5, 1000},
     Increment = 1,
     Suffix = "studs",
     CurrentValue = State.get("silentAimSize"),
