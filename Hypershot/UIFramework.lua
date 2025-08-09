@@ -1,21 +1,65 @@
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
 
-local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main"
-local function fetch(path)
-    return game:HttpGet(BASE .. "/" .. path, true)
+-- Point BASE at Hypershot folder so we can use src/*.lua paths
+local BASE = "https://raw.githubusercontent.com/eselfins31/Valor-Hub/main/Hypershot"
+
+local function notifyErr(msg)
+    pcall(function()
+        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = msg, Duration = 6 })
+    end)
 end
 
--- Load modules from Hypershot/src
-local State = loadstring(fetch("Hypershot/src/State.lua"))()
-local Services = loadstring(fetch("Hypershot/src/Services.lua"))()
+local function fetch(path)
+    local ok, res = pcall(function()
+        return game:HttpGet(BASE .. "/" .. path, true)
+    end)
+    if not ok or not res or #res == 0 then
+        notifyErr("Fetch failed: " .. tostring(path))
+        return nil
+    end
+    return res
+end
 
-local ESP = loadstring(fetch("Hypershot/src/ESP.lua"))()(Services, State)
-local Rage = loadstring(fetch("Hypershot/src/Rage.lua"))()(Services, State)
-local FOV = loadstring(fetch("Hypershot/src/FOV.lua"))()(Services, State)
-local Movement = loadstring(fetch("Hypershot/src/Movement.lua"))()(Services, State)
-local WeaponMods = loadstring(fetch("Hypershot/src/WeaponMods.lua"))()(Services, State)
-local SilentAim = loadstring(fetch("Hypershot/src/SilentAim.lua"))()(Services, State)
-local HUD = loadstring(fetch("Hypershot/src/HUD.lua"))()(Services, State)
+local function loadChunk(source, name)
+    if not source then return nil end
+    local fn, err = loadstring(source)
+    if not fn then
+        notifyErr("Load error: " .. tostring(name) .. " -> " .. tostring(err))
+        return nil
+    end
+    local ok, rv = pcall(fn)
+    if not ok then
+        notifyErr("Run error: " .. tostring(name) .. " -> " .. tostring(rv))
+        return nil
+    end
+    return rv
+end
+
+-- Load modules from Hypershot/src with safe fallbacks
+local State = loadChunk(fetch("src/State.lua"), "State") or { settings = {}, update = function() end, get = function() return nil end }
+local Services = loadChunk(fetch("src/Services.lua"), "Services") or { Players = game:GetService("Players"), RunService = game:GetService("RunService"), UserInputService = game:GetService("UserInputService"), TweenService = game:GetService("TweenService"), Lighting = game:GetService("Lighting"), ReplicatedStorage = game:GetService("ReplicatedStorage") }
+
+local function loadInitModule(path, name)
+    local init = loadChunk(fetch(path), name)
+    if not init then
+        notifyErr(name .. " init missing; using stub")
+        return { start = function() end, stop = function() end }
+    end
+    local ok, mod = pcall(function() return init(Services, State) end)
+    if not ok or not mod then
+        notifyErr(name .. " init failed; using stub")
+        return { start = function() end, stop = function() end }
+    end
+    return mod
+end
+
+local ESP       = loadInitModule("src/ESP.lua", "ESP")
+local Rage      = loadInitModule("src/Rage.lua", "Rage")
+local FOV       = loadInitModule("src/FOV.lua", "FOV")
+local Movement  = loadInitModule("src/Movement.lua", "Movement")
+local WeaponMods= loadInitModule("src/WeaponMods.lua", "WeaponMods")
+local SilentAim = loadInitModule("src/SilentAim.lua", "SilentAim")
+local HUD       = loadInitModule("src/HUD.lua", "HUD")
 
 local Window = Rayfield:CreateWindow({
     Name = "Valor Hub - Hypershot",
@@ -55,25 +99,25 @@ local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     local kc = input.KeyCode
-    if kc == Enum.KeyCode[State.get("bindEspToggle")] then
+    if kc == Enum.KeyCode[State.get("bindEspToggle") or "Unknown"] then
         State.update({ espEnabled = not State.get("espEnabled") })
         if State.get("espEnabled") then ESP.start() else ESP.stop() end
-    elseif kc == Enum.KeyCode[State.get("bindInfJumpToggle")] then
+    elseif kc == Enum.KeyCode[State.get("bindInfJumpToggle") or "Unknown"] then
         State.update({ infiniteJump = not State.get("infiniteJump") })
         if State.get("infiniteJump") then Movement.startInfiniteJump() else Movement.stopInfiniteJump() end
-    elseif kc == Enum.KeyCode[State.get("bindSpeedToggle")] then
+    elseif kc == Enum.KeyCode[State.get("bindSpeedToggle") or "Unknown"] then
         State.update({ speedEnabled = not State.get("speedEnabled") })
         if State.get("speedEnabled") then Movement.startSpeed() else Movement.stopSpeed() end
-    elseif kc == Enum.KeyCode[State.get("bindNoclipToggle")] then
+    elseif kc == Enum.KeyCode[State.get("bindNoclipToggle") or "Unknown"] then
         State.update({ noclipEnabled = not State.get("noclipEnabled") })
         if State.get("noclipEnabled") then Movement.startNoclip() else Movement.stopNoclip() end
-    elseif kc == Enum.KeyCode[State.get("bindFlyToggle")] then
+    elseif kc == Enum.KeyCode[State.get("bindFlyToggle") or "Unknown"] then
         State.update({ flyEnabled = not State.get("flyEnabled") })
         if State.get("flyEnabled") then Movement.startFly() else Movement.stopFly() end
-    elseif kc == Enum.KeyCode[State.get("bindSilentAimToggle")] then
+    elseif kc == Enum.KeyCode[State.get("bindSilentAimToggle") or "Unknown"] then
         State.update({ silentAim = not State.get("silentAim") })
         if State.get("silentAim") then SilentAim.start() else SilentAim.stop() end
-    elseif kc == Enum.KeyCode[State.get("bindWeaponModsApply")] then
+    elseif kc == Enum.KeyCode[State.get("bindWeaponModsApply") or "Unknown"] then
         WeaponMods.update()
         Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Applied weapon mods", Duration = 3 })
     end
@@ -410,6 +454,7 @@ MovementTab:CreateToggle({
     end
 })
 
+-- UI & Config
 UITab:CreateSection("Interface")
 UITab:CreateToggle({
     Name = "UI Blur",
