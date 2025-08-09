@@ -19,10 +19,12 @@ local function loadChunk(source, name)
 end
 
 local State = loadChunk(fetch("src/State.lua"), "State") or { settings = {}, update=function() end, get=function() end }
-local Services = loadChunk(fetch("src/Services.lua"), "Services") or { Players=game:GetService("Players"), RunService=game:GetService("RunService"), UserInputService=game:GetService("UserInputService"), TweenService=game:GetService("TweenService"), Lighting=game:GetService("Lighting"), ReplicatedStorage=game:GetService("ReplicatedStorage") }
+local Services = loadChunk(fetch("src/Services.lua"), "Services") or { Players=game:GetService("Players"), RunService=game:GetService("RunService"), UserInputService=game:GetService("UserInputService"), TweenService=game:GetService("TweenService"), Lighting=game:GetService("Lighting"), ReplicatedStorage=game:GetService("ReplicatedStorage"), CollectionService=game:GetService("CollectionService"), HttpService=game:GetService("HttpService") }
 
-local Teleport = loadChunk(fetch("src/Teleport.lua"), "Teleport")
-local Automation = loadChunk(fetch("src/Automation.lua"), "Automation")
+local TeleportInit = loadChunk(fetch("src/Teleport.lua"), "Teleport")
+local AutomationInit = loadChunk(fetch("src/Automation.lua"), "Automation")
+local Teleport = TeleportInit and TeleportInit(Services, State) or nil
+local Automation = AutomationInit and AutomationInit(Services, State) or nil
 
 local Window = Rayfield:CreateWindow({
     Name = "Valor Hub - CryptoFarm",
@@ -34,64 +36,10 @@ local Window = Rayfield:CreateWindow({
     KeySettings = { Title = "Valor Hub - CryptoFarm", Subtitle = "Authentication", Note = "", FileName = "ValorHubKey", SaveKey = true, GrabKeyFromSite = false, Key = "" }
 })
 
--- existing tabs
 local TeleTab = Window:CreateTab("Teleport", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local InfoTab = Window:CreateTab("Info", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
-
--- Keybind listener
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    local kc = input.KeyCode
-    if State.get and kc == Enum.KeyCode[State.get("bindClickTpToggle") or "Unknown"] then
-        local cur = State.get("clickTp")
-        if State.update then State.update({ clickTp = not cur }) end
-        if Teleport and Teleport.enableClickTp then Teleport.enableClickTp(not cur) end
-        notify("Click TP: " .. tostring(not cur))
-    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoCollectToggle") or "Unknown"] then
-        if Automation and Automation.autoCollect then
-            local flip = not (Automation.__collecting or false)
-            Automation.autoCollect(flip)
-            notify("Auto Collect: " .. tostring(flip))
-        end
-    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoSellToggle") or "Unknown"] then
-        if Automation and Automation.autoSell then
-            local flip = not (Automation.__selling or false)
-            Automation.autoSell(flip)
-            notify("Auto Sell: " .. tostring(flip))
-        end
-    elseif State.get and kc == Enum.KeyCode[State.get("bindSpeedToggle") or "Unknown"] then
-        local flip = not (State.get("speedEnabled") or false)
-        if State.update then State.update({ speedEnabled = flip }) end
-        if Automation and Automation.Movement then
-            if flip then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
-            else Automation.Movement.stopSpeed() end
-        end
-        notify("Speed: " .. tostring(flip))
-    end
-end)
-
--- Keybinds tab controls
-local keyOptions = {"Q","E","R","T","Y","U","I","O","P","G","H","J","K","L","Z","X","C","V","B","N","M","LeftAlt","RightAlt","LeftShift","RightShift","F"}
-local function bindDropdown(tab, label, stateKey)
-    tab:CreateDropdown({
-        Name = label,
-        Options = keyOptions,
-        CurrentOption = State.get and State.get(stateKey) or "",
-        Flag = stateKey,
-        Callback = function(opt)
-            if State.update then State.update({ [stateKey] = opt }) end
-            notify(label .. " set to " .. tostring(opt))
-        end
-    })
-end
-KeybindsTab:CreateSection("Toggle Binds")
-bindDropdown(KeybindsTab, "Toggle Click TP", "bindClickTpToggle")
-bindDropdown(KeybindsTab, "Toggle Auto Collect", "bindAutoCollectToggle")
-bindDropdown(KeybindsTab, "Toggle Auto Sell", "bindAutoSellToggle")
-bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
 
 -- Teleport features
 TeleTab:CreateSection("Click Teleport")
@@ -147,6 +95,7 @@ AutoTab:CreateToggle({
         if Automation and Automation.autoSell then Automation.autoSell(on) end
     end
 })
+
 AutoTab:CreateSection("Movement")
 AutoTab:CreateToggle({
     Name = "Speed Hack",
@@ -176,5 +125,58 @@ AutoTab:CreateSlider({
 -- Info
 InfoTab:CreateSection("About")
 InfoTab:CreateParagraph({ Title = "Valor Hub - CryptoFarm", Content = "Grow A Crypto Farm utility: click TP, saved TP points, auto-collect, auto-sell." })
+
+-- Keybind listener
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    local kc = input.KeyCode
+    if State.get and kc == Enum.KeyCode[State.get("bindClickTpToggle") or "Unknown"] then
+        local cur = State.get("clickTp")
+        if State.update then State.update({ clickTp = not cur }) end
+        if Teleport and Teleport.enableClickTp then Teleport.enableClickTp(not cur) end
+        notify("Click TP: " .. tostring(not cur))
+    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoCollectToggle") or "Unknown"] then
+        if Automation and Automation.autoCollect then
+            local flip = not (Automation.__collecting or false)
+            Automation.autoCollect(flip)
+            notify("Auto Collect: " .. tostring(flip))
+        end
+    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoSellToggle") or "Unknown"] then
+        if Automation and Automation.autoSell then
+            local flip = not (Automation.__selling or false)
+            Automation.autoSell(flip)
+            notify("Auto Sell: " .. tostring(flip))
+        end
+    elseif State.get and kc == Enum.KeyCode[State.get("bindSpeedToggle") or "Unknown"] then
+        local flip = not (State.get("speedEnabled") or false)
+        if State.update then State.update({ speedEnabled = flip }) end
+        if Automation and Automation.Movement then
+            if flip then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
+            else Automation.Movement.stopSpeed() end
+        end
+        notify("Speed: " .. tostring(flip))
+    end
+end)
+
+-- Keybinds tab controls
+local keyOptions = {"Q","E","R","T","Y","U","I","O","P","G","H","J","K","L","Z","X","C","V","B","N","M","LeftAlt","RightAlt","LeftShift","RightShift","F"}
+local function bindDropdown(tab, label, stateKey)
+    tab:CreateDropdown({
+        Name = label,
+        Options = keyOptions,
+        CurrentOption = State.get and State.get(stateKey) or "",
+        Flag = stateKey,
+        Callback = function(opt)
+            if State.update then State.update({ [stateKey] = opt }) end
+            notify(label .. " set to " .. tostring(opt))
+        end
+    })
+end
+KeybindsTab:CreateSection("Toggle Binds")
+bindDropdown(KeybindsTab, "Toggle Click TP", "bindClickTpToggle")
+bindDropdown(KeybindsTab, "Toggle Auto Collect", "bindAutoCollectToggle")
+bindDropdown(KeybindsTab, "Toggle Auto Sell", "bindAutoSellToggle")
+bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
 
 Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = "UI loaded", Duration = 4 })
