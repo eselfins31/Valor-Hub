@@ -24,10 +24,7 @@ return function(Services, State)
         if not events then events = remotes:WaitForChild("Events", 2) end
         if not events then return nil end
         local ev = events:FindFirstChild(name) or events:FindFirstChild(name:upper()) or events:FindFirstChild(name:lower())
-        if not ev then
-            -- one last try with WaitForChild using original case
-            ev = events:WaitForChild(name, 1)
-        end
+        if not ev then ev = events:WaitForChild(name, 1) end
         remoteCache[name] = ev
         return ev
     end
@@ -86,16 +83,48 @@ return function(Services, State)
         if cf and hrp then hrp.CFrame = cf end
     end
 
-    -- Auto Collect via Remote
+    -- Helpers to find computers owned by player
+    local function isOwnedByPlayer(model)
+        if model:GetAttribute("Owner") == LocalPlayer.Name then return true end
+        local ownerTag = model:FindFirstChild("Owner")
+        if ownerTag and ownerTag:IsA("StringValue") and ownerTag.Value == LocalPlayer.Name then return true end
+        return false
+    end
+
+    local function findComputers()
+        local results = {}
+        for _, inst in ipairs(workspace:GetDescendants()) do
+            if inst:IsA("Model") or inst:IsA("Folder") then
+                local n = inst.Name:lower()
+                if n:find("computer") or n:find("pc") then
+                    table.insert(results, inst)
+                end
+            end
+        end
+        return results
+    end
+
+    -- Auto Collect via Remote (collect all from all computers)
     function Farm.startAutoCollect()
         Farm.stopAutoCollect()
         local accum = 0
         collectConn = RunService.Heartbeat:Connect(function(dt)
             if not State.get("autoCollect") then return end
             accum += dt
-            if accum < 0.25 then return end -- 4x per second
+            if accum < 0.2 then return end -- 5x per second
             accum = 0
+            -- attempt blanket collect (no args)
             fireEvent("ClaimCrypto")
+            -- attempt per-computer collects
+            for _, comp in ipairs(findComputers()) do
+                if isOwnedByPlayer(comp) then
+                    fireEvent("ClaimCrypto", comp)
+                else
+                    -- Some games require the top-level model or a child part
+                    local candidate = comp:FindFirstChildWhichIsA("BasePart") or comp
+                    fireEvent("ClaimCrypto", candidate)
+                end
+            end
         end)
     end
 
@@ -103,16 +132,18 @@ return function(Services, State)
         if collectConn then collectConn:Disconnect(); collectConn = nil end
     end
 
-    -- Auto Sell via Remote
+    -- Auto Sell via Remote (sell everything)
     function Farm.startAutoSell()
         Farm.stopAutoSell()
         local accum = 0
         sellConn = RunService.Heartbeat:Connect(function(dt)
             if not State.get("autoSell") then return end
             accum += dt
-            if accum < 0.5 then return end -- 2x per second
+            if accum < 0.4 then return end -- 2.5x per second
             accum = 0
+            -- Common variants: no args, "All"
             fireEvent("SellCrypto")
+            fireEvent("SellCrypto", "All")
         end)
     end
 
