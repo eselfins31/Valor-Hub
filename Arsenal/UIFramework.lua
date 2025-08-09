@@ -17,9 +17,9 @@ local SilentAim = loadstring(fetch("src/SilentAim.lua"))()(Services, State)
 local HUD = loadstring(fetch("src/HUD.lua"))()(Services, State)
 
 local Window = Rayfield:CreateWindow({
-    Name = "Valor Hub - Arsenal",
-    LoadingTitle = "Valor Hub - Arsenal",
-    LoadingSubtitle = "Roblox-friendly UI",
+    Name = "Valor Hub - Arsenal V1.0",
+    LoadingTitle = "We are the Winners",
+    LoadingSubtitle = "Valor Hub - Arsenal V1.0",
     ConfigurationSaving = {
         Enabled = false,
         FolderName = "ValorHub",
