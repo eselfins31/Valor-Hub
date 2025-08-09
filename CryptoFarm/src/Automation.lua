@@ -36,84 +36,129 @@ function Movement.applySpeed(target)
 end
 Auto.Movement = Movement
 
-local collecting = false
-local selling = false
-local collectConn
-local sellConn
+-- Internal flags for keybind flips
+Auto.__collecting = false
+Auto.__selling = false
 
--- Heuristic: items tagged as "Collectible"; if not, scan workspace for parts named with "Coin"/"Crypto"
-local function findCollectibles()
-    local items = {}
-    for _, inst in ipairs(CollectionService:GetTagged("Collectible")) do table.insert(items, inst) end
-    if #items == 0 then
-        for _, inst in ipairs(workspace:GetDescendants()) do
-            if inst:IsA("BasePart") then
-                local n = inst.Name:lower()
-                if n:find("coin") or n:find("crypto") or n:find("token") then table.insert(items, inst) end
-            end
-        end
-    end
-    return items
-end
-
-local function tpTo(part)
+-- Utilities
+local function getHRP()
     local plr = Players.LocalPlayer
     local char = plr.Character or plr.CharacterAdded:Wait()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp and part and part.Position then
-        hrp.CFrame = CFrame.new(part.Position + Vector3.new(0, 3, 0))
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function tpNear(pos)
+    local hrp = getHRP()
+    if hrp and pos then
+        hrp.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
     end
 end
 
+local function getPromptWorldPos(prompt)
+    if not prompt then return nil end
+    local parent = prompt.Parent
+    local tries = 0
+    while parent and tries < 4 do
+        if parent:IsA("BasePart") then return parent.Position end
+        parent = parent.Parent; tries = tries + 1
+    end
+    if prompt.Parent and prompt.Parent:IsA("BasePart") then return prompt.Parent.Position end
+    return nil
+end
+
+local function isCollectPrompt(prompt)
+    local a = (prompt.ActionText or ""):lower()
+    local o = (prompt.ObjectText or ""):lower()
+    return a:find("collect") or a:find("harvest") or a:find("farm") or o:find("computer") or o:find("pc") or o:find("miner")
+end
+
+local function isSellPrompt(prompt)
+    local a = (prompt.ActionText or ""):lower()
+    local o = (prompt.ObjectText or ""):lower()
+    return a:find("sell") or o:find("sell")
+end
+
+local function getPrompts()
+    local collects, sells = {}, {}
+    for _, p in ipairs(workspace:GetDescendants()) do
+        if p:IsA("ProximityPrompt") then
+            if isCollectPrompt(p) then table.insert(collects, p)
+            elseif isSellPrompt(p) then table.insert(sells, p) end
+        end
+    end
+    return collects, sells
+end
+
+local function firePrompt(prompt)
+    if not prompt or not prompt:IsDescendantOf(workspace) then return end
+    -- Try executor helper first
+    local ok = pcall(function() if fireproximityprompt then fireproximityprompt(prompt) end end)
+    if ok then return end
+    -- Fallback: temporarily set HoldDuration 0 and proximity range
+    local oldHold, oldRange = prompt.HoldDuration, prompt.MaxActivationDistance
+    prompt.MaxActivationDistance = math.max(oldRange, 20)
+    prompt.HoldDuration = 0
+    pcall(function() prompt:InputHoldBegin() end)
+    task.wait(0.02)
+    pcall(function() prompt:InputHoldEnd() end)
+    prompt.HoldDuration = oldHold
+    prompt.MaxActivationDistance = oldRange
+end
+
+local collectConn
+local lastFired = setmetatable({}, {__mode = "k"})
+
 function Auto.autoCollect(on)
-    collecting = on
+    Auto.__collecting = on
     if collectConn then collectConn:Disconnect(); collectConn = nil end
     if on then
         collectConn = RunService.Heartbeat:Connect(function()
-            local items = findCollectibles()
-            for i = 1, math.min(5, #items) do
-                local it = items[i]
-                pcall(tpTo, it)
-                task.wait(0.05)
+            local collects = getPrompts()
+            -- collects is first return; we only need the first value
+            collects = collects
+            -- Teleport and fire a few per tick
+            local fired = 0
+            for _, prompt in ipairs(select(1, getPrompts())) do
+                if fired >= 4 then break end
+                if prompt.Enabled then
+                    local t = lastFired[prompt] or 0
+                    if (tick() - t) > 0.5 then
+                        local pos = getPromptWorldPos(prompt)
+                        if pos then tpNear(pos) end
+                        firePrompt(prompt)
+                        lastFired[prompt] = tick()
+                        fired += 1
+                        task.wait(0.05)
+                    end
+                end
             end
         end)
     end
 end
 
--- Auto sell via GUI or remote: placeholder tries to fire a remote named Sell or SellCrypto if found
-local function findSellRemote()
-    for _, inst in ipairs(ReplicatedStorage:GetDescendants()) do
-        if inst:IsA("RemoteEvent") or inst:IsA("RemoteFunction") then
-            local n = inst.Name:lower()
-            if n == "sell" or n:find("sellcrypto") then return inst end
-        end
-    end
-    return nil
-end
-
-local function clickSellGui()
-    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return end
-    for _, inst in ipairs(pg:GetDescendants()) do
-        if inst:IsA("TextButton") or inst:IsA("ImageButton") then
-            local n = inst.Name:lower()
-            if n:find("sell") then pcall(function() inst:Activate() end) end
-        end
-    end
-end
-
+local sellConn
 function Auto.autoSell(on)
-    selling = on
+    Auto.__selling = on
     if sellConn then sellConn:Disconnect(); sellConn = nil end
     if on then
         sellConn = RunService.Heartbeat:Connect(function()
-            local r = findSellRemote()
-            if r then
-                pcall(function() if r.FireServer then r:FireServer() else r:InvokeServer() end end)
-            else
-                clickSellGui()
+            -- find nearest sell prompt and activate
+            local nearest, nd = nil, math.huge
+            for _, p in ipairs(select(2, getPrompts())) do
+                if p.Enabled then
+                    local pos = getPromptWorldPos(p)
+                    if pos then
+                        local d = (pos - (getHRP() and getHRP().Position or pos)).Magnitude
+                        if d < nd then nd = d; nearest = p end
+                    end
+                end
             end
-            task.wait(0.5)
+            if nearest then
+                local pos = getPromptWorldPos(nearest)
+                if pos then tpNear(pos) end
+                firePrompt(nearest)
+            end
+            task.wait(0.3)
         end)
     end
 end
