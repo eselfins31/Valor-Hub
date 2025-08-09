@@ -60,6 +60,7 @@ local Movement  = loadInitModule("src/Movement.lua", "Movement")
 local WeaponMods= loadInitModule("src/WeaponMods.lua", "WeaponMods")
 local SilentAim = loadInitModule("src/SilentAim.lua", "SilentAim")
 local HUD       = loadInitModule("src/HUD.lua", "HUD")
+local Cosmetics = loadInitModule("src/Cosmetics.lua", "Cosmetics")
 
 local Window = Rayfield:CreateWindow({
     Name = "Valor Hub - Hypershot",
@@ -95,6 +96,7 @@ local MovementTab = Window:CreateTab("Movement", 4483362458)
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
 local InfoTab   = Window:CreateTab("Info", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
+local CosmeticsTab = Window:CreateTab("Cosmetics", 4483362458)
 
 local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, gpe)
@@ -312,7 +314,7 @@ RageTab:CreateToggle({
 })
 RageTab:CreateSlider({
     Name = "Silent Aim Hitbox Size",
-    Range = {5, 30},
+    Range = {5, 150},
     Increment = 1,
     Suffix = "studs",
     CurrentValue = State.get("silentAimSize"),
@@ -494,7 +496,7 @@ InfoTab:CreateParagraph({
 })
 InfoTab:CreateParagraph({
     Title = "Key Features",
-    Content = "ESP (names/boxes/health/tracers), Rage FOV + autoshoot/trigger, Silent Aim hitbox, Infinite Jump v2, FLY, NOCLIP v2, Spider climb, Session HUD."
+    Content = "ESP (names/boxes/health/tracers), Rage FOV + autoshoot/trigger, Silent Aim hitbox, Infinite Jump v2, FLY, NOCLIP v2, Spider climb, Session HUD, Rainbow weapon skins."
 })
 InfoTab:CreateParagraph({
     Title = "Credits",
@@ -506,6 +508,9 @@ Rayfield:LoadConfiguration()
 if State.get("hudEnabled") then HUD.start() end
 
 FOV.start()
+
+-- Start cosmetics if enabled
+if State.get("rainbowSkins") then Cosmetics.start() end
 
 Rayfield:Notify({
     Title = "Valor Hub - Hypershot",
@@ -590,6 +595,41 @@ bindDropdown(KeybindsTab, "Toggle NOCLIP", "bindNoclipToggle")
 bindDropdown(KeybindsTab, "Toggle FLY", "bindFlyToggle")
 bindDropdown(KeybindsTab, "Toggle Silent Aim", "bindSilentAimToggle")
 bindDropdown(KeybindsTab, "Apply Weapon Mods", "bindWeaponModsApply")
+
+-- Cosmetics
+CosmeticsTab:CreateSection("Rainbow Skins")
+CosmeticsTab:CreateToggle({
+    Name = "Enable Rainbow Skins",
+    CurrentValue = State.get("rainbowSkins"),
+    Flag = "rainbowSkins",
+    Callback = function(on)
+        State.update({ rainbowSkins = on })
+        if on then Cosmetics.start() else Cosmetics.stop() end
+    end
+})
+CosmeticsTab:CreateSlider({
+    Name = "Transparency",
+    Range = {0, 0.9},
+    Increment = 0.05,
+    Suffix = "",
+    CurrentValue = State.get("rainbowSkinsTransparency"),
+    Flag = "rainbowSkinsTransparency",
+    Callback = function(v)
+        State.update({ rainbowSkinsTransparency = v })
+    end
+})
+CosmeticsTab:CreateSlider({
+    Name = "Rainbow Speed",
+    Range = {0.2, 5},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = State.get("rainbowSkinsSpeed"),
+    Flag = "rainbowSkinsSpeed",
+    Callback = function(v)
+        State.update({ rainbowSkinsSpeed = v })
+        Cosmetics.refresh()
+    end
+})
 
 -- Auto re-inject on teleport (queue_on_teleport)
 local function setupAutoReinject()

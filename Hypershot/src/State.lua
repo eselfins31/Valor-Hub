@@ -46,6 +46,11 @@ State.settings = {
 
     hudEnabled = true,
 
+    -- Cosmetics: Rainbow weapon skins
+    rainbowSkins = false,
+    rainbowSkinsTransparency = 0.3,
+    rainbowSkinsSpeed = 1.5,
+
     bindEspToggle = "T",
     bindInfJumpToggle = "J",
     bindSpeedToggle = "Z",
