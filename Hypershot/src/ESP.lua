@@ -7,25 +7,27 @@ return function(Services, State)
 
     local drawings = {}
 
+    local function getTeamKey(p)
+        if p.Team then return "TeamObj:" .. tostring(p.Team) end
+        if p.TeamColor then return "TeamColor:" .. tostring(p.TeamColor) end
+        local ok, attr = pcall(function() return p:GetAttribute("Team") or p:GetAttribute("team") or p:GetAttribute("TeamName") end)
+        if ok and attr then return "Attr:" .. tostring(attr) end
+        local v = p:FindFirstChild("Team")
+        if v and v.Value then return "Val:" .. tostring(v.Value) end
+        local ls = p:FindFirstChild("leaderstats")
+        if ls then
+            local tv = ls:FindFirstChild("Team") or ls:FindFirstChild("team") or ls:FindFirstChild("Side")
+            if tv and tv.Value then return "LS:" .. tostring(tv.Value) end
+        end
+        return nil
+    end
+
     local function areTeammates(a, b)
-        if a.Team and b.Team then
-            if a.Team == b.Team then return true end
-        end
-        if a.TeamColor and b.TeamColor and a.TeamColor == b.TeamColor then
-            return true
-        end
-        local function readTeamVal(p)
-            local v = p:FindFirstChild("Team")
-            if v and v.Value then return tostring(v.Value) end
-            local ls = p:FindFirstChild("leaderstats")
-            if ls then
-                local tv = ls:FindFirstChild("Team") or ls:FindFirstChild("team")
-                if tv and tv.Value then return tostring(tv.Value) end
-            end
-            return nil
-        end
-        local ta = readTeamVal(a)
-        local tb = readTeamVal(b)
+        -- If either is neutral, treat as NOT teammates (show ESP) to be safe
+        if a.Neutral == true or b.Neutral == true then return false end
+        if a.Team and b.Team and a.Team == b.Team then return true end
+        if a.TeamColor and b.TeamColor and a.TeamColor == b.TeamColor then return true end
+        local ta, tb = getTeamKey(a), getTeamKey(b)
         if ta and tb and ta == tb then return true end
         return false
     end

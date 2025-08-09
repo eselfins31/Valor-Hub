@@ -595,7 +595,13 @@ bindDropdown(KeybindsTab, "Apply Weapon Mods", "bindWeaponModsApply")
 local function setupAutoReinject()
     local TeleportService = game:GetService("TeleportService")
     local src = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/eselfins31/Valor-Hub/main/Hypershot/UIFramework.lua", true))()]]
-    local q = rawget(getfenv(), "queue_on_teleport") or (syn and syn.queue_on_teleport)
+    local env = getfenv and getfenv() or _G
+    local q = env.queue_on_teleport or env.queueteleport
+    if not q and syn then q = syn.queue_on_teleport end
+    if not q and getgenv then
+        local g = getgenv()
+        q = g.queue_on_teleport or g.queueteleport or q
+    end
     if q then
         local ok = pcall(function() q(src) end)
         if not ok then
@@ -606,7 +612,7 @@ local function setupAutoReinject()
             if not ok2 then Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Re-queue failed", Duration = 6 }) end
         end)
     else
-        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "queue_on_teleport not supported by executor", Duration = 6 })
+        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Executor lacks queue_on_teleport. Add the loader URL to Solara Auto-Exec.", Duration = 8 })
     end
 end
 setupAutoReinject()
