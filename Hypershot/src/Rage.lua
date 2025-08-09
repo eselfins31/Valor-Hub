@@ -1,13 +1,16 @@
 return function(Services, State)
     local Rage = {}
 
+    local Players = Services.Players
     local RunService = Services.RunService
     local UserInputService = Services.UserInputService
 
     local camera = workspace.CurrentCamera
+    local LocalPlayer = Players.LocalPlayer
 
     local fovCircle
     local started = false
+    local lastShot = 0
 
     local function ensureFovCircle()
         local ok, DrawingLib = pcall(function() return Drawing end)
@@ -33,43 +36,68 @@ return function(Services, State)
         end)
     end
 
-    local function distToCursor(worldPos)
+    local function areTeammates(a, b)
+        if a.Team and b.Team and a.Team == b.Team then return true end
+        if a.TeamColor and b.TeamColor and a.TeamColor == b.TeamColor then return true end
+        return false
+    end
+
+    local function isVisible(part)
+        if not part then return false end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = { LocalPlayer.Character }
+        local origin = camera.CFrame.Position
+        local direction = (part.Position - origin)
+        local hit = workspace:Raycast(origin, direction, params)
+        if not hit then return true end
+        return hit.Instance and hit.Instance:IsDescendantOf(part.Parent)
+    end
+
+    local function cursorDistance(worldPos)
         local screenPoint = camera:WorldToScreenPoint(worldPos)
         local cursor = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
         return (cursor - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
     end
 
-    local function currentHumanoid()
-        local plr = game:GetService("Players").LocalPlayer
-        local char = plr.Character
-        return char and char:FindFirstChildOfClass("Humanoid")
+    local function getAimPart(character)
+        if not character then return nil end
+        local which = State.get("rageHitbox") or "Head"
+        return character:FindFirstChild(which) or character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
     end
 
-    local function quickStop()
-        if not State.get("rageQuickStop") then return end
-        local hum = currentHumanoid()
-        if hum then hum:Move(Vector3.new(), false) end
+    local function selectTarget()
+        local best, bestDist
+        local fov = State.get("rageFovRadius") or 250
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                if not State.get("teamCheck") or not areTeammates(p, LocalPlayer) then
+                    local char = p.Character
+                    if char then
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        local aim = getAimPart(char)
+                        if hum and hum.Health > 0 and aim then
+                            local dist = cursorDistance(aim.Position)
+                            if dist <= fov and isVisible(aim) then
+                                if not best or dist < bestDist then
+                                    best = aim
+                                    bestDist = dist
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return best
     end
 
-    local function hitchanceOK(worldPos)
-        local deg = State.get("rageHitchanceAngleDeg")
-        local cursor = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
-        local sp = camera:WorldToScreenPoint(worldPos)
-        local screenPoint = Vector2.new(sp.X, sp.Y)
-        local dx = (cursor - screenPoint).Magnitude
-        return dx <= State.get("rageFovRadius") and dx <= deg * 8
+    local function canShoot()
+        return (tick() - lastShot) > 0.12
     end
 
-    local function autoShoot()
-        if not State.get("rageAutoShoot") then return end
-        quickStop()
-        pcall(function()
-            mouse1press(); task.wait(); mouse1release()
-        end)
-    end
-
-    local function triggerbot()
-        if not State.get("rageTriggerbot") then return end
+    local function doClick()
+        lastShot = tick()
         pcall(function()
             mouse1press(); task.wait(); mouse1release()
         end)
@@ -80,10 +108,11 @@ return function(Services, State)
         started = true
         RunService:BindToRenderStep("ValorHub_Rage", Enum.RenderPriority.Camera.Value + 11, function()
             updateFov()
-            local lookPoint = camera.CFrame.Position + camera.CFrame.LookVector * 1000
-            if hitchanceOK(lookPoint) then
-                if State.get("rageTriggerbot") then triggerbot() end
-                if State.get("rageAutoShoot") then autoShoot() end
+            local targetPart = selectTarget()
+            if targetPart and canShoot() then
+                if State.get("rageTriggerbot") or State.get("rageAutoShoot") then
+                    doClick()
+                end
             end
         end)
     end

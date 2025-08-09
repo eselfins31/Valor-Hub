@@ -7,11 +7,34 @@ return function(Services, State)
 
     local drawings = {}
 
+    local function areTeammates(a, b)
+        if a.Team and b.Team then
+            if a.Team == b.Team then return true end
+        end
+        if a.TeamColor and b.TeamColor and a.TeamColor == b.TeamColor then
+            return true
+        end
+        local function readTeamVal(p)
+            local v = p:FindFirstChild("Team")
+            if v and v.Value then return tostring(v.Value) end
+            local ls = p:FindFirstChild("leaderstats")
+            if ls then
+                local tv = ls:FindFirstChild("Team") or ls:FindFirstChild("team")
+                if tv and tv.Value then return tostring(tv.Value) end
+            end
+            return nil
+        end
+        local ta = readTeamVal(a)
+        local tb = readTeamVal(b)
+        if ta and tb and ta == tb then return true end
+        return false
+    end
+
     local function colorFor(player)
         if State.get("espUseTeamColor") and player.Team and player.Team.TeamColor then
             return player.Team.TeamColor.Color
         end
-        if player.Team == LocalPlayer.Team then
+        if areTeammates(player, LocalPlayer) then
             return State.get("espTeamColor")
         else
             return State.get("espEnemyColor")
@@ -166,7 +189,7 @@ return function(Services, State)
                     if char and head and hrp then
                         ensureForPlayer(v)
 
-                        local enemy = (not teamCheck) or (v.Team ~= LocalPlayer.Team)
+                        local enemy = (not teamCheck) or (not areTeammates(v, LocalPlayer))
 
                         local root = ensureGuiRoot()
                         if not root then continue end

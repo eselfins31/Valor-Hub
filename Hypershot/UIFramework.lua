@@ -94,6 +94,7 @@ local WeaponsTab = Window:CreateTab("Weapons", 4483362458)
 local MovementTab = Window:CreateTab("Movement", 4483362458)
 local UITab     = Window:CreateTab("UI & Config", 4483362458)
 local InfoTab   = Window:CreateTab("Info", 4483362458)
+local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
 
 local UIS = game:GetService("UserInputService")
 UIS.InputBegan:Connect(function(input, gpe)
@@ -124,20 +125,6 @@ UIS.InputBegan:Connect(function(input, gpe)
 end)
 
 HomeTab:CreateSection("Quick Actions")
-HomeTab:CreateButton({
-    Name = "Start All",
-    Callback = function()
-        ESP.start(); Rage.start(); FOV.start(); Movement.startInfiniteJump(); Movement.startSpeed(); SilentAim.start(); WeaponMods.update()
-        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Modules started", Duration = 4 })
-    end
-})
-HomeTab:CreateButton({
-    Name = "Stop All",
-    Callback = function()
-        ESP.stop(); Rage.stop(); FOV.stop(); Movement.stopInfiniteJump(); Movement.stopSpeed(); SilentAim.stop(); WeaponMods.stopAll()
-        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Modules stopped", Duration = 4 })
-    end
-})
 
 VisualsTab:CreateSection("ESP")
 VisualsTab:CreateToggle({
@@ -525,3 +512,101 @@ Rayfield:Notify({
     Content = "UI loaded successfully",
     Duration = 6
 })
+
+-- Utilities: Rejoin and Server Hop on Home
+HomeTab:CreateButton({
+    Name = "Rejoin",
+    Callback = function()
+        local TeleportService = game:GetService("TeleportService")
+        local Players = game:GetService("Players")
+        local ok, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Players.LocalPlayer)
+        end)
+        if not ok then
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Rejoin failed: " .. tostring(err), Duration = 6 })
+        end
+    end
+})
+HomeTab:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        local HttpService = game:GetService("HttpService")
+        local TeleportService = game:GetService("TeleportService")
+        local Players = game:GetService("Players")
+        local ok, res = pcall(function()
+            local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", game.PlaceId)
+            return HttpService:GetAsync(url)
+        end)
+        if not ok or not res then
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Server list fetch failed", Duration = 6 })
+            return
+        end
+        local data = nil
+        pcall(function() data = HttpService:JSONDecode(res) end)
+        if not data or not data.data then
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Server list decode failed", Duration = 6 })
+            return
+        end
+        local target = nil
+        for _, srv in ipairs(data.data) do
+            if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+                target = srv.id; break
+            end
+        end
+        if target then
+            local ok2, err2 = pcall(function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, target, Players.LocalPlayer)
+            end)
+            if not ok2 then
+                Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Server hop failed: " .. tostring(err2), Duration = 6 })
+            end
+        else
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "No suitable server found", Duration = 6 })
+        end
+    end
+})
+
+-- Keybinds configuration
+local keyOptions = {"Q","E","R","T","Y","U","I","O","P","G","H","J","K","L","Z","X","C","V","B","N","M","LeftAlt","RightAlt","LeftShift","RightShift","F","MouseButton2"}
+
+local function bindDropdown(tab, label, stateKey)
+    tab:CreateDropdown({
+        Name = label,
+        Options = keyOptions,
+        CurrentOption = State.get(stateKey) or "",
+        Flag = stateKey,
+        Callback = function(opt)
+            State.update({ [stateKey] = opt })
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = label .. " set to " .. tostring(opt), Duration = 3 })
+        end
+    })
+end
+
+KeybindsTab:CreateSection("Toggle Binds")
+bindDropdown(KeybindsTab, "Toggle ESP", "bindEspToggle")
+bindDropdown(KeybindsTab, "Toggle Infinite Jump", "bindInfJumpToggle")
+bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
+bindDropdown(KeybindsTab, "Toggle NOCLIP", "bindNoclipToggle")
+bindDropdown(KeybindsTab, "Toggle FLY", "bindFlyToggle")
+bindDropdown(KeybindsTab, "Toggle Silent Aim", "bindSilentAimToggle")
+bindDropdown(KeybindsTab, "Apply Weapon Mods", "bindWeaponModsApply")
+
+-- Auto re-inject on teleport (queue_on_teleport)
+local function setupAutoReinject()
+    local TeleportService = game:GetService("TeleportService")
+    local src = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/eselfins31/Valor-Hub/main/Hypershot/UIFramework.lua", true))()]]
+    local q = rawget(getfenv(), "queue_on_teleport") or (syn and syn.queue_on_teleport)
+    if q then
+        local ok = pcall(function() q(src) end)
+        if not ok then
+            Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "queue_on_teleport failed", Duration = 6 })
+        end
+        TeleportService.TeleportInitFailed:Connect(function()
+            local ok2 = pcall(function() q(src) end)
+            if not ok2 then Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "Re-queue failed", Duration = 6 }) end
+        end)
+    else
+        Rayfield:Notify({ Title = "Valor Hub - Hypershot", Content = "queue_on_teleport not supported by executor", Duration = 6 })
+    end
+end
+setupAutoReinject()
