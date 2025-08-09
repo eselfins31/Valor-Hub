@@ -10,11 +10,11 @@ return function(Services, State)
         for _, v in ipairs(Players:GetPlayers()) do
             if v ~= me and v.Character then
                 local ch = v.Character
+                -- Head-only expansion for Silent Aim headshots
                 local parts = {
-                    "RightUpperLeg",
-                    "LeftUpperLeg",
                     "HeadHB",
-                    "HumanoidRootPart",
+                    "HeadHitbox",
+                    "Head",
                 }
                 local size = State.get("silentAimSize")
                 for _, name in ipairs(parts) do
