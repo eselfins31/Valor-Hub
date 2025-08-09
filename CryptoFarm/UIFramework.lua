@@ -21,10 +21,13 @@ end
 local State = loadChunk(fetch("src/State.lua"), "State") or { settings = {}, update=function() end, get=function() end }
 local Services = loadChunk(fetch("src/Services.lua"), "Services") or { Players=game:GetService("Players"), RunService=game:GetService("RunService"), UserInputService=game:GetService("UserInputService"), TweenService=game:GetService("TweenService"), Lighting=game:GetService("Lighting"), ReplicatedStorage=game:GetService("ReplicatedStorage"), CollectionService=game:GetService("CollectionService"), HttpService=game:GetService("HttpService") }
 
+-- load modules
 local TeleportInit = loadChunk(fetch("src/Teleport.lua"), "Teleport")
 local AutomationInit = loadChunk(fetch("src/Automation.lua"), "Automation")
+local DebugInit = loadChunk(fetch("src/Debug.lua"), "Debug")
 local Teleport = TeleportInit and TeleportInit(Services, State) or nil
 local Automation = AutomationInit and AutomationInit(Services, State) or nil
+local Debug = DebugInit and DebugInit(Services, State) or nil
 
 local Window = Rayfield:CreateWindow({
     Name = "Valor Hub - CryptoFarm",
@@ -40,6 +43,7 @@ local TeleTab = Window:CreateTab("Teleport", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local InfoTab = Window:CreateTab("Info", 4483362458)
 local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
+local DebugTab = Window:CreateTab("Debug", 4483362458)
 
 -- Teleport features
 TeleTab:CreateSection("Click Teleport")
@@ -178,5 +182,30 @@ bindDropdown(KeybindsTab, "Toggle Click TP", "bindClickTpToggle")
 bindDropdown(KeybindsTab, "Toggle Auto Collect", "bindAutoCollectToggle")
 bindDropdown(KeybindsTab, "Toggle Auto Sell", "bindAutoSellToggle")
 bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
+
+-- Debug tab
+DebugTab:CreateSection("Remote Spy")
+DebugTab:CreateToggle({
+    Name = "Enable Spy",
+    CurrentValue = false,
+    Callback = function(on)
+        if not Debug then return end
+        if on then Debug.start(); Debug.showGui() else Debug.stop(); Debug.hideGui() end
+    end
+})
+DebugTab:CreateInput({
+    Name = "Filter (case-insensitive)",
+    PlaceholderText = "e.g. sell, collect, all",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        if Debug then Debug.setFilter(text) end
+    end
+})
+DebugTab:CreateButton({
+    Name = "Copy Log",
+    Callback = function()
+        if Debug then Debug.copyLog() end
+    end
+})
 
 Rayfield:Notify({ Title = "Valor Hub - CryptoFarm", Content = "UI loaded", Duration = 4 })
