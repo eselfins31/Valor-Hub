@@ -34,9 +34,64 @@ local Window = Rayfield:CreateWindow({
     KeySettings = { Title = "Valor Hub - CryptoFarm", Subtitle = "Authentication", Note = "", FileName = "ValorHubKey", SaveKey = true, GrabKeyFromSite = false, Key = "" }
 })
 
+-- existing tabs
 local TeleTab = Window:CreateTab("Teleport", 4483362458)
 local AutoTab = Window:CreateTab("Auto", 4483362458)
 local InfoTab = Window:CreateTab("Info", 4483362458)
+local KeybindsTab = Window:CreateTab("Keybinds", 4483362458)
+
+-- Keybind listener
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    local kc = input.KeyCode
+    if State.get and kc == Enum.KeyCode[State.get("bindClickTpToggle") or "Unknown"] then
+        local cur = State.get("clickTp")
+        if State.update then State.update({ clickTp = not cur }) end
+        if Teleport and Teleport.enableClickTp then Teleport.enableClickTp(not cur) end
+        notify("Click TP: " .. tostring(not cur))
+    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoCollectToggle") or "Unknown"] then
+        if Automation and Automation.autoCollect then
+            local flip = not (Automation.__collecting or false)
+            Automation.autoCollect(flip)
+            notify("Auto Collect: " .. tostring(flip))
+        end
+    elseif State.get and kc == Enum.KeyCode[State.get("bindAutoSellToggle") or "Unknown"] then
+        if Automation and Automation.autoSell then
+            local flip = not (Automation.__selling or false)
+            Automation.autoSell(flip)
+            notify("Auto Sell: " .. tostring(flip))
+        end
+    elseif State.get and kc == Enum.KeyCode[State.get("bindSpeedToggle") or "Unknown"] then
+        local flip = not (State.get("speedEnabled") or false)
+        if State.update then State.update({ speedEnabled = flip }) end
+        if Automation and Automation.Movement then
+            if flip then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
+            else Automation.Movement.stopSpeed() end
+        end
+        notify("Speed: " .. tostring(flip))
+    end
+end)
+
+-- Keybinds tab controls
+local keyOptions = {"Q","E","R","T","Y","U","I","O","P","G","H","J","K","L","Z","X","C","V","B","N","M","LeftAlt","RightAlt","LeftShift","RightShift","F"}
+local function bindDropdown(tab, label, stateKey)
+    tab:CreateDropdown({
+        Name = label,
+        Options = keyOptions,
+        CurrentOption = State.get and State.get(stateKey) or "",
+        Flag = stateKey,
+        Callback = function(opt)
+            if State.update then State.update({ [stateKey] = opt }) end
+            notify(label .. " set to " .. tostring(opt))
+        end
+    })
+end
+KeybindsTab:CreateSection("Toggle Binds")
+bindDropdown(KeybindsTab, "Toggle Click TP", "bindClickTpToggle")
+bindDropdown(KeybindsTab, "Toggle Auto Collect", "bindAutoCollectToggle")
+bindDropdown(KeybindsTab, "Toggle Auto Sell", "bindAutoSellToggle")
+bindDropdown(KeybindsTab, "Toggle Speed", "bindSpeedToggle")
 
 -- Teleport features
 TeleTab:CreateSection("Click Teleport")
@@ -90,6 +145,31 @@ AutoTab:CreateToggle({
     CurrentValue = false,
     Callback = function(on)
         if Automation and Automation.autoSell then Automation.autoSell(on) end
+    end
+})
+AutoTab:CreateSection("Movement")
+AutoTab:CreateToggle({
+    Name = "Speed Hack",
+    CurrentValue = State.get and State.get("speedEnabled") or false,
+    Callback = function(on)
+        if State.update then State.update({ speedEnabled = on }) end
+        if Automation and Automation.Movement then
+            if on then Automation.Movement.startSpeed(State.get and State.get("walkSpeed") or 100)
+            else Automation.Movement.stopSpeed() end
+        end
+    end
+})
+AutoTab:CreateSlider({
+    Name = "WalkSpeed",
+    Range = {16, 250},
+    Increment = 1,
+    Suffix = "ws",
+    CurrentValue = State.get and State.get("walkSpeed") or 100,
+    Callback = function(v)
+        if State.update then State.update({ walkSpeed = v }) end
+        if State.get and State.get("speedEnabled") and Automation and Automation.Movement then
+            Automation.Movement.applySpeed(v)
+        end
     end
 })
 

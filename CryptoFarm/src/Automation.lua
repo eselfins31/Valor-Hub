@@ -6,6 +6,36 @@ local RunService = Services.RunService
 local CollectionService = Services.CollectionService
 local ReplicatedStorage = Services.ReplicatedStorage
 
+-- Movement helpers
+local Movement = {}
+local speedConn
+local originalWalkSpeed
+local function getHumanoid()
+    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+    return char:FindFirstChildOfClass("Humanoid")
+end
+function Movement.startSpeed(target)
+    local hum = getHumanoid()
+    if not hum then return end
+    if originalWalkSpeed == nil then originalWalkSpeed = hum.WalkSpeed end
+    hum.WalkSpeed = target or 100
+    if speedConn then speedConn:Disconnect() end
+    speedConn = hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        hum.WalkSpeed = target or 100
+    end)
+end
+function Movement.stopSpeed()
+    if speedConn then speedConn:Disconnect(); speedConn = nil end
+    local hum = getHumanoid()
+    if hum and originalWalkSpeed then hum.WalkSpeed = originalWalkSpeed end
+    originalWalkSpeed = nil
+end
+function Movement.applySpeed(target)
+    local hum = getHumanoid()
+    if hum then hum.WalkSpeed = target or hum.WalkSpeed end
+end
+Auto.Movement = Movement
+
 local collecting = false
 local selling = false
 local collectConn
